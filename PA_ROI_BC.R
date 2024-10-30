@@ -547,6 +547,8 @@ View(physical_activity_ROI_BC[, c("Connect_ID", "JogRun_METhr", "Tennis_METhr", 
 
 View(physical_activity_ROI_BC[, c("Connect_ID", "moderate_METhr", "WalkHike_METhr", "Golf_METhr", "SwimLaps_METhr", "Strength_METhr", "Yoga_METhr", "MA_METhr", "Dance_METhr", "Surf_METhr", "Exercise_METhr", "vigorous_METhr", "JogRun_METhr", "Tennis_METhr",  "Bike_METhr", "Ski_METhr", "CCSki_METhr", "HICT_METhr")])
 
+####################Code for descriptive statistics
+
 ##calculating missingness percentage for activity frequency, duration, and seasonality variables
 missing_data_summary <- physical_activity_ROI_BC %>% 
   summarise(across(c(WalkHike_freq, WalkHike_dur, WalkHike_season,
@@ -599,6 +601,27 @@ cat("Vigorous METhr - Median:", median(physical_activity_ROI_BC$vigorous_METhr, 
 cat("Vigorous METhr - 25th Percentile:", quantile(physical_activity_ROI_BC$vigorous_METhr, 0.25, na.rm = TRUE), "\n")
 cat("Vigorous METhr - 75th Percentile:", quantile(physical_activity_ROI_BC$vigorous_METhr, 0.75, na.rm = TRUE), "\n\n")
 
+cat("Overall hours/week - Min:", min(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
+cat("Overall hours/week - Max:", max(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
+cat("Overall hours/week - Mean:", mean(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
+cat("Overall hours/week - Median:", median(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
+cat("Overall hours/week - 25th Percentile:", quantile(physical_activity_ROI_BC$overall_hrweek, 0.25, na.rm = TRUE), "\n")
+cat("Overall hours/week - 75th Percentile:", quantile(physical_activity_ROI_BC$overall_hrweek, 0.75, na.rm = TRUE), "\n\n")
+
+cat("Moderate hours/week - Min:", min(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
+cat("Moderate hours/week - Max:", max(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
+cat("Moderate hours/week - Mean:", mean(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
+cat("Moderate hours/week - Median:", median(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
+cat("Moderate hours/week - 25th Percentile:", quantile(physical_activity_ROI_BC$moderate_hrweek, 0.25, na.rm = TRUE), "\n")
+cat("Moderate hours/week - 75th Percentile:", quantile(physical_activity_ROI_BC$moderate_hrweek, 0.75, na.rm = TRUE), "\n\n")
+
+cat("Vigorous hours/week - Min:", min(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
+cat("Vigorous hours/week - Max:", max(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
+cat("Vigorous hours/week - Mean:", mean(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
+cat("Vigorous hours/week - Median:", median(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
+cat("Vigorous hours/week - 25th Percentile:", quantile(physical_activity_ROI_BC$vigorous_hrweek, 0.25, na.rm = TRUE), "\n")
+cat("Vigorous hours/week - 75th Percentile:", quantile(physical_activity_ROI_BC$vigorous_hrweek, 0.75, na.rm = TRUE), "\n\n")
+
 #summary stats excluding participants with a score of 0
 
 #excluding participants with a zero score for Moderate, Vigorous, and Overall Intensity Scores
@@ -630,11 +653,30 @@ cat("Vigorous METhr - Mean:", mean(vigorous_non_zero$vigorous_METhr, na.rm = TRU
 cat("Vigorous METhr - 75th Percentile:", quantile(vigorous_non_zero$vigorous_METhr, 0.75, na.rm = TRUE), "\n")
 cat("Vigorous METhr - Max:", max(vigorous_non_zero$vigorous_METhr, na.rm = TRUE), "\n\n")
 
-boxplot(physical_activity_ROI_BC$moderate_METhr, main = "Boxplot of Moderate METhr", xlab = "Moderate Intensity Score", col = "lightgray")
-hist(physical_activity_ROI_BC$moderate_METhr, main = "Boxplot of Moderate METhr", xlab = "Moderate Intensity Score", col = "lightgray")
-boxplot(physical_activity_ROI_BC$vigorous_METhr, main = "Boxplot of Vigorous METhr", xlab = "Vigorous Intensity Score", col = "lightsteelblue")
-hist(physical_activity_ROI_BC$vigorous_METhr, main = "Boxplot of Vigorous METhr", xlab = "Vigorous Intensity Score", col = "lightsteelblue")
-boxplot(physical_activity_ROI_BC$overall_METhr, main = "Boxplot of Overall METhr", xlab = "Overall Intensity Score", col = "paleturquoise4")
-hist(physical_activity_ROI_BC$overall_METhr, main = "Boxplot of Overall METhr", xlab = "Overall Intensity Score", col = "paleturquoise4")
+moderate_non_zero2 <- physical_activity_ROI_BC %>%
+  filter(moderate_hrweek > 0)  #keep only participants with a score greater than 0 for Moderate
+vigorous_non_zero2 <- physical_activity_ROI_BC %>%
+  filter(vigorous_hrweek > 0)  #keep only participants with a score greater than 0 for Vigorous
+overall_non_zero2 <- physical_activity_ROI_BC %>%
+  filter(overall_hrweek > 0)  #keep only participants with a score greater than 0 for Overall
 
+cat("Overall METhr - Min:", min(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n")
+cat("Overall METhr - 25th Percentile:", quantile(overall_non_zero2$overall_hrweek, 0.25, na.rm = TRUE), "\n")
+cat("Overall METhr - Median:", median(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n")
+cat("Overall METhr - Mean:", mean(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n")
+cat("Overall METhr - 75th Percentile:", quantile(overall_non_zero2$overall_hrweek, 0.75, na.rm = TRUE), "\n")
+cat("Overall METhr - Max:", max(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n\n")
 
+cat("Moderate METhr - Min:", min(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n")
+cat("Moderate METhr - 25th Percentile:", quantile(moderate_non_zero2$moderate_hrweek, 0.25, na.rm = TRUE), "\n")
+cat("Moderate METhr - Median:", median(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n")
+cat("Moderate METhr - Mean:", mean(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n")
+cat("Moderate METhr - 75th Percentile:", quantile(moderate_non_zero2$moderate_hrweek, 0.75, na.rm = TRUE), "\n")
+cat("Moderate METhr - Max:", max(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n\n")
+
+cat("Vigorous METhr - Min:", min(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n")
+cat("Vigorous METhr - 25th Percentile:", quantile(vigorous_non_zero2$vigorous_hrweek, 0.25, na.rm = TRUE), "\n")
+cat("Vigorous METhr - Median:", median(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n")
+cat("Vigorous METhr - Mean:", mean(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n")
+cat("Vigorous METhr - 75th Percentile:", quantile(vigorous_non_zero2$vigorous_hrweek, 0.75, na.rm = TRUE), "\n")
+cat("Vigorous METhr - Max:", max(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n\n")
