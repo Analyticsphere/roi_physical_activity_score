@@ -1,6 +1,7 @@
 install.packages("bigrquery")
 install.packages("pak")
 install.packages("arsenal")
+install.packages("readr")
 pak::pak("r-dbi/bigrquery")
 
 ## Description =================================================================
@@ -27,6 +28,7 @@ library(DBI)
 library(bigrquery)
 library(glue)
 library(arsenal)
+library(readr)
 
 
 ## Connect to Database =========================================================
@@ -302,6 +304,28 @@ FROM `nih-nci-dceg-connect-prod-6d04.FlatConnect.module2_v1_JP`
 
 physical_activity_ROI <- dbGetQuery(con, sql)
 
+#true missing flag for those who skipped this section
+physical_activity_ROI <- physical_activity_ROI %>% mutate(
+  true_missing = case_when(
+    is.na(SrvMRE_WalkHike_v1r0)
+    & is.na(SrvMRE_JogRun_v1r0)
+    & is.na(SrvMRE_Tennis_v1r0)
+    & is.na(SrvMRE_PlayGolf_v1r0)
+    & is.na(SrvMRE_SwimLaps_v1r0)
+    & is.na(SrvMRE_BikeRide_v1r0)
+    & is.na(SrvMRE_Strengthening_v1r0)
+    & is.na(SrvMRE_Yoga_v1r0)
+    & is.na(SrvMRE_MartialArts_v1r0)
+    & is.na(SrvMRE_Dance_v1r0)
+    & is.na(SrvMRE_DownhillSki_v1r0)
+    & is.na(SrvMRE_CrossCountry_v1r0)
+    & is.na(SrvMRE_Surf_v1r0)
+    & is.na(SrvMRE_HICT_v1r0)
+    & is.na(SrvMRE_OtherExercise_v1r0) ~ 1, #flag for those who skipped the questions
+    TRUE ~ 0 #not skipped
+  ))
+summary(freqlist(~true_missing, data = physical_activity_ROI))
+    
 #getting count of those who selected each activity
 summary(freqlist(~SrvMRE_WalkHike_v1r0, data = physical_activity_ROI))
 summary(freqlist(~SrvMRE_JogRun_v1r0, data = physical_activity_ROI))
@@ -325,20 +349,20 @@ calculate_rec_activity <- function(data, activity_var, frequency_input, frequenc
   data <- mutate(data,
     #Creating frequency variables for each activity
     !!frequency_output := case_when(
-      !!sym(activity_var) == 1 & is.na(!!sym(frequency_input)) ~ 0,  #set to 0 if response for activity, but missing freq response
-      !!sym(activity_var) == 1 & !is.na(!!sym(frequency_input)) ~ case_when( #if response for activity and not missing freq response
+      !!sym(activity_var) == 1 & is.na(!!sym(frequency_input)) ~ 0,  #set to 0 if yes for activity, but missing freq response
+      !!sym(activity_var) == 1 & !is.na(!!sym(frequency_input)) ~ case_when( #if yes for activity and not missing freq response
       !!sym(frequency_input) == 239152340 ~ 0.24,  #one day / 4.25 weeks per month = 0.24 days per week
       !!sym(frequency_input) == 582006876 ~ 0.59,  #averaged 2.5 days / 4.25 weeks per month = 0.59 days per week
       !!sym(frequency_input) == 645894551 ~ 1.5,   #averaged 1 to 2 days per week
       !!sym(frequency_input) == 996315715 ~ 3.5,   #averaged 3 to 4 days per week
       !!sym(frequency_input) == 671267928 ~ 5.5,   #averaged 5 to 6 days per week
       !!sym(frequency_input) == 647504893 ~ 7),    #everyday
-      !!sym(activity_var) != 1 ~ NA_real_ #if they didn't participate in activity (activity_var NE 1), frequency_output set to NA
+      !!sym(activity_var) != 1 ~ 0 #if they didn't participate in activity (activity_var NE 1), frequency_output set to 0 -- this also includes those who selected none of the above or skipped the section
     ),
-    
+    #Creating duration variables for each activity
     !!duration_output := case_when(
-      !!sym(activity_var) == 1 & is.na(!!sym(duration_input)) ~ 0, #set to 0 if response for activity, but missing dur response
-      !!sym(activity_var) == 1 & !is.na(!!sym(duration_input)) ~ case_when( #if there's a response for activity and not missing dur response
+      !!sym(activity_var) == 1 & is.na(!!sym(duration_input)) ~ 0, #set to 0 if yes for activity, but missing dur response
+      !!sym(activity_var) == 1 & !is.na(!!sym(duration_input)) ~ case_when( #if yes for activity and not missing dur response
       !!sym(duration_input) == 428999623 ~ 0.125,  #averaged 7.5 minutes/60 = 0.125 hours 
       !!sym(duration_input) == 248303092 ~ 0.383,  #averaged 23 minutes/60 = 0.383 hours
       !!sym(duration_input) == 206020811 ~ 0.625,  #averaged 37.5 minutes/60 = 0.625 hours 
@@ -346,7 +370,7 @@ calculate_rec_activity <- function(data, activity_var, frequency_input, frequenc
       !!sym(duration_input) == 638092100 ~ 1,      #one hr 
       !!sym(duration_input) == 628177728 ~ 2,	     #two hrs
       !!sym(duration_input) == 805918496 ~ 3),		 #three hrs
-      !!sym(activity_var) != 1 ~ NA_real_ #if they didn't participate in activity (activity_var NE 1), duration_output set to NA
+      !!sym(activity_var) != 1 ~ 0 #if they didn't participate in activity (activity_var NE 1), duration_output set to 0 -- this also includes those who selected none of the above or skipped the section
     ))
  return(data)   
 }
@@ -417,9 +441,10 @@ Exercise_check <- physical_activity_ROI_BC %>%
   summarise_at(vars(SrvMRE_ExerciseOften_v1r0, SrvMRE_ExerciseTime_v1r0), ~ sum(!is.na(.)))
 
 #Checking to see if any values were assigned incorrectly for frequency and duration
-qc_activity_freq <- function(data, input_var, output_var) {
+qc_activity_freq <- function(data, base_var, input_var, output_var) {
   data %>% 
-    filter(!is.na(!!sym(input_var))) %>%
+    filter((!!sym(base_var) != 1 & !!sym(output_var) != 0) |
+           (!!sym(base_var) == 1 & !is.na(!!sym(input_var)))) %>%
     summarize(
       total_mismatches = sum(
         (!!sym(input_var) == 239152340 & !!sym(output_var) != 0.24) |
@@ -427,30 +452,31 @@ qc_activity_freq <- function(data, input_var, output_var) {
         (!!sym(input_var) == 645894551 & !!sym(output_var) != 1.5) |
         (!!sym(input_var) == 996315715 & !!sym(output_var) != 3.5) |
         (!!sym(input_var) == 671267928 & !!sym(output_var) != 5.5) |
-        (!!sym(input_var) == 647504893 & !!sym(output_var) != 7),  
+        (!!sym(input_var) == 647504893 & !!sym(output_var) != 7),
         na.rm = TRUE),
       total_checked = n())
 }
 
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_WalkHikeOften_v1r0", "WalkHike_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_JogRunOften_v1r0", "JogRun_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_TennisOften_v1r0", "Tennis_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_GolfOften_v1r0", "Golf_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SwimLapsOften_v1r0", "SwimLaps_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_BikeOften_v1r0", "Bike_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_StrengthOften_v1r0", "Strength_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_YogaOften_v1r0", "Yoga_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_MAOften_v1r0", "MA_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_DanceOften_v1r0", "Dance_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SkiOften_v1r0", "Ski_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_CCSkiOften_v1r0", "CCSki_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SurfOften_v1r0", "Surf_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_HICTOften_v1r0", "HICT_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_ExerciseOften_v1r0", "Exercise_freq")                  
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_WalkHike_v1r0", "SrvMRE_WalkHikeOften_v1r0", "WalkHike_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_JogRun_v1r0", "SrvMRE_JogRunOften_v1r0", "JogRun_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Tennis_v1r0", "SrvMRE_TennisOften_v1r0", "Tennis_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_PlayGolf_v1r0", "SrvMRE_GolfOften_v1r0", "Golf_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SwimLaps_v1r0", "SrvMRE_SwimLapsOften_v1r0", "SwimLaps_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_BikeRide_v1r0", "SrvMRE_BikeOften_v1r0", "Bike_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Strengthening_v1r0", "SrvMRE_StrengthOften_v1r0", "Strength_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Yoga_v1r0", "SrvMRE_YogaOften_v1r0", "Yoga_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_MartialArts_v1r0", "SrvMRE_MAOften_v1r0", "MA_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Dance_v1r0", "SrvMRE_DanceOften_v1r0", "Dance_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_DownhillSki_v1r0", "SrvMRE_SkiOften_v1r0", "Ski_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_CrossCountry_v1r0", "SrvMRE_CCSkiOften_v1r0", "CCSki_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Surf_v1r0", "SrvMRE_SurfOften_v1r0", "Surf_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_HICT_v1r0", "SrvMRE_HICTOften_v1r0", "HICT_freq")
+qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_OtherExercise_v1r0", "SrvMRE_ExerciseOften_v1r0", "Exercise_freq")                  
 
-qc_activity_duration <- function(data, input_var, output_var) {
+qc_activity_duration <- function(data, base_var, input_var, output_var) {
   data %>% 
-    filter(!is.na(!!sym(input_var))) %>%
+    filter((!!sym(base_var) != 1 & !!sym(output_var) != 0) |
+             (!!sym(base_var) == 1 & !is.na(!!sym(input_var)))) %>%
     summarize(
       total_mismatches = sum(
         (!!sym(input_var) == 428999623 & !!sym(output_var) != 0.125) |
@@ -464,21 +490,21 @@ qc_activity_duration <- function(data, input_var, output_var) {
       total_checked = n())
 }
 
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_WalkHikeTime_v1r0", "WalkHike_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_JogRunTime_v1r0", "JogRun_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_TennisTime_v1r0", "Tennis_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_GolfTime_v1r0", "Golf_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SwimLapsTime_v1r0", "SwimLaps_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_BikeTime_v1r0", "Bike_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_StrengthTime_v1r0", "Strength_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_YogaTime_v1r0", "Yoga_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_MATime_v1r0", "MA_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_DanceTime_v1r0", "Dance_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SkiTime_v1r0", "Ski_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_CCSkiTime_v1r0", "CCSki_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SurfTime_v1r0", "Surf_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_HICTTime_v1r0", "HICT_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_ExerciseTime_v1r0", "Exercise_dur") 
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_WalkHike_v1r0", "SrvMRE_WalkHikeTime_v1r0", "WalkHike_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_JogRun_v1r0", "SrvMRE_JogRunTime_v1r0", "JogRun_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Tennis_v1r0", "SrvMRE_TennisTime_v1r0", "Tennis_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_PlayGolf_v1r0", "SrvMRE_GolfTime_v1r0", "Golf_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SwimLaps_v1r0", "SrvMRE_SwimLapsTime_v1r0", "SwimLaps_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_BikeRide_v1r0", "SrvMRE_BikeTime_v1r0", "Bike_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Strengthening_v1r0", "SrvMRE_StrengthTime_v1r0", "Strength_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Yoga_v1r0", "SrvMRE_YogaTime_v1r0", "Yoga_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_MartialArts_v1r0", "SrvMRE_MATime_v1r0", "MA_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Dance_v1r0", "SrvMRE_DanceTime_v1r0", "Dance_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_DownhillSki_v1r0", "SrvMRE_SkiTime_v1r0", "Ski_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_CrossCountry_v1r0", "SrvMRE_CCSkiTime_v1r0", "CCSki_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Surf_v1r0", "SrvMRE_SurfTime_v1r0", "Surf_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_HICT_v1r0", "SrvMRE_HICTTime_v1r0", "HICT_dur")
+qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_OtherExercise_v1r0", "SrvMRE_ExerciseTime_v1r0", "Exercise_dur")      
 
 ##Function to create seasonality variables, ensuring all season variables are numeric
 calculate_season <- function(data, activity_var, spring_input, summer_input, fall_input, winter_input, season_output) {
@@ -499,7 +525,7 @@ calculate_season <- function(data, activity_var, spring_input, summer_input, fal
    !!sym(activity_var) == 1 & rowSums(cbind(
     as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)), as.numeric(!!sym(winter_input))), 
       na.rm = TRUE) == 0 ~ 0, # If none selected, set to 0
-   !!sym(activity_var) != 1 ~ NA_real_ )) # If activity not selected, set to NA
+   !!sym(activity_var) != 1 ~ 0 )) # If activity not selected, set to 0 -- this also includes those who selected none of the above or skipped the section
   return(data)
   }
 
@@ -545,13 +571,13 @@ physical_activity_ROI_BC$Surf_hrweek = physical_activity_ROI_BC$Surf_freq * phys
 physical_activity_ROI_BC$HICT_hrweek = physical_activity_ROI_BC$HICT_freq * physical_activity_ROI_BC$HICT_dur * physical_activity_ROI_BC$HICT_season
 physical_activity_ROI_BC$Exercise_hrweek = physical_activity_ROI_BC$Exercise_freq * physical_activity_ROI_BC$Exercise_dur * physical_activity_ROI_BC$Exercise_season
 
-#sampling 10 rows to check above calculations
+#sampling rows to check above calculations
 sample_WalkHike_hrweek <- physical_activity_ROI_BC %>%
   select(Connect_ID, WalkHike_hrweek, WalkHike_freq, WalkHike_dur, WalkHike_season) %>%
-  sample_n(10)
+  sample_n(25)
 sample_Yoga_hrweek <- physical_activity_ROI_BC %>%
   select(Connect_ID, Yoga_hrweek, Yoga_freq, Yoga_dur, Yoga_season) %>%
-  sample_n(10)
+  sample_n(25)
 
 #Calculating MET hrs for each activity
 physical_activity_ROI_BC$WalkHike_METhr = physical_activity_ROI_BC$WalkHike_hrweek * 4.8
@@ -576,18 +602,18 @@ sample_WalkHike_METhr <- physical_activity_ROI_BC %>%
   sample_n(10)
 
 #Creating a single overall energy expenditure (METhr) score by summing the METhr variables across all activities
+#na.rm = TRUE to allow for calculation of total energy expenditure score even when input METhr values are missing, most won't participate in all activities 
 physical_activity_ROI_BC$overall_METhr <- rowSums(
   physical_activity_ROI_BC[, c("WalkHike_METhr", "JogRun_METhr", "Tennis_METhr", "Golf_METhr", "SwimLaps_METhr", "Bike_METhr", 
     "Strength_METhr", "Yoga_METhr", "MA_METhr", "Dance_METhr", "Ski_METhr", "CCSki_METhr", "Surf_METhr", 
     "HICT_METhr", "Exercise_METhr")], na.rm = TRUE)
-#na.rm = TRUE to allow for calculation of total energy expenditure score even when input METhr values are missing, most won't participate in all activities 
 
 #Calculating the total duration of recreation/exercise per week by summing the hours/week variables across all activities
+#na.rm = TRUE to allow for calculation of total energy expenditure score even when input hrs/week values are missing, most won't participate in all activities
 physical_activity_ROI_BC$overall_hrweek <- rowSums(
   physical_activity_ROI_BC[, c("WalkHike_hrweek", "JogRun_hrweek", "Tennis_hrweek", "Golf_hrweek", "SwimLaps_hrweek", 
     "Bike_hrweek", "Strength_hrweek", "Yoga_hrweek", "MA_hrweek", "Dance_hrweek", "Ski_hrweek", "CCSki_hrweek", "Surf_hrweek", 
     "HICT_hrweek", "Exercise_hrweek")], na.rm = TRUE)
-#na.rm = TRUE to allow for calculation of total energy expenditure score even when input hrs/week values are missing, most won't participate in all activities
 
 #Checking overall METhr and hours per week variables
 sample_overall_METhr <- physical_activity_ROI_BC %>%
@@ -600,8 +626,6 @@ sample_overall_hrweek <- physical_activity_ROI_BC %>%
   sample_n(10)
 
 #Based on the ‘Connect PAQ Coding METs July 2024 .xlsx’ document:
-#WalkHike-moderate, JogRun-vigorous, Tennis-vigorous, Golf-moderate, SwimLaps-moderate, Bike-vigorous, Strengthening-moderate 
-#Yoga-moderate, MA-moderate, Dance-moderate, Ski-vigorous,CCSki-vigorous, Surf-moderate, HICT-vigorous, Other-moderate
 #Light = < 3.0 MET, Moderate = 3.0 – 5.9 MET, Vigorous = 6.0+ MET
 
 #Calculating hours per week and METhr variables for each intensity category, ignoring potential missing inputs to calculate final variable
@@ -620,10 +644,10 @@ physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
 
 #Creating minutes per week variable for moderate and vigorous intensity
 physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
-  moderate_mins_week = moderate_aerobic_hrweek * 60,
+  moderate_mins_week_aerobic = moderate_aerobic_hrweek * 60,
   vigorous_mins_week = vigorous_hrweek * 60,
   #Harmonizing moderate and vigorous activity to create single 'guideline minutes' variable
-  guideline_minutes = moderate_mins_week + (vigorous_mins_week*2)) 
+  guideline_minutes = moderate_mins_week_aerobic + (vigorous_mins_week*2)) 
 
 #Creating flag for guideline minutes, where <150 mins=not meeting, 150-300 mins=meeting, and >300 mins=exceeding
 physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
@@ -638,16 +662,7 @@ physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
   strengthening_binary = case_when(SrvMRE_Strengthening_v1r0 == 1 ~ "Yes",
   SrvMRE_Strengthening_v1r0 == 0 | is.na(SrvMRE_Strengthening_v1r0) ~ "No"))
 
-#strengthening >= 1 day per week vs all others, currently using the above as skip logic didn't apply for 3 participants
-physical_activity_ROI_BC <- physical_activity_ROI_BC %>% 
-  mutate (strengthening_guideline = case_when(
-    SrvMRE_StrengthOften_v1r0 %in% c(645894551, 996315715, 671267928, 647504893) ~ "at least once per week",
-    is.na(SrvMRE_StrengthOften_v1r0) | SrvMRE_StrengthOften_v1r0 %in% c(239152340, 582006876) ~ "less than once per week"))
-
-muscle_strengthening <- physical_activity_ROI_BC %>% filter(SrvMRE_Strengthening_v1r0 == 1) %>% 
-  select(Connect_ID, SrvMRE_StrengthOften_v1r0, Strength_freq, SrvMRE_StrengthTime_v1r0, Strength_dur, SrvMRE_Strengthening_v1r0, strengthening_guideline) 
-
-#Summary statistics including participants with 0 guideline minutes
+#############Summary statistics including participants with 0 guideline minutes
 quantile(physical_activity_ROI_BC$guideline_minutes, probs = c(0.25, 0.50, 0.75, 0.90, 0.95, 0.99), na.rm = TRUE)
 mean(physical_activity_ROI_BC$guideline_minutes)
 min(physical_activity_ROI_BC$guideline_minutes)
@@ -673,23 +688,24 @@ summary(freqlist(~strengthening_guideline, data = muscle_strengthening))
 
 #Calculating outliers
 #closer look at those who have guideline minutes > 99th percentile
-#N=326 ||| Alot of people report walking 5-6 days/week and 7 days per week, look at remaining activity variables
-filtered_extreme <- filtered_non_zeroes %>% filter(guideline_minutes >= 1972.89) %>% 
-  select(Connect_ID, SrvMRE_WalkHikeOften_v1r0, WalkHike_freq, SrvMRE_WalkHikeTime_v1r0, WalkHike_dur,  
-         SrvMRE_JogRunOften_v1r0, JogRun_freq, SrvMRE_JogRunTime_v1r0, JogRun_dur,  
-         SrvMRE_TennisOften_v1r0, Tennis_freq, SrvMRE_TennisTime_v1r0, Tennis_dur,  
-         SrvMRE_GolfOften_v1r0, Golf_freq, SrvMRE_GolfTime_v1r0, Golf_dur,  
-         SrvMRE_SwimLapsOften_v1r0, SwimLaps_freq, SrvMRE_SwimLapsTime_v1r0, SwimLaps_dur,  
-         SrvMRE_BikeOften_v1r0, Bike_freq, SrvMRE_BikeTime_v1r0, Bike_dur,  
-         SrvMRE_StrengthOften_v1r0, Strength_freq, SrvMRE_StrengthTime_v1r0, Strength_dur,  
-         SrvMRE_YogaOften_v1r0, Yoga_freq, SrvMRE_YogaTime_v1r0, Yoga_dur,  
-         SrvMRE_MAOften_v1r0, MA_freq, SrvMRE_MATime_v1r0, MA_dur,  
-         SrvMRE_DanceOften_v1r0, Dance_freq, SrvMRE_DanceTime_v1r0, Dance_dur,  
-         SrvMRE_SkiOften_v1r0, Ski_freq, SrvMRE_SkiTime_v1r0, Ski_dur,  
-         SrvMRE_CCSkiOften_v1r0, CCSki_freq, SrvMRE_CCSkiTime_v1r0, CCSki_dur,  
-         SrvMRE_SurfOften_v1r0, Surf_freq, SrvMRE_SurfTime_v1r0, Surf_dur,  
-         SrvMRE_HICTOften_v1r0, HICT_freq, SrvMRE_HICTTime_v1r0, HICT_dur,  
-         SrvMRE_ExerciseOften_v1r0, Exercise_freq, SrvMRE_ExerciseTime_v1r0, Exercise_dur)
+filtered_extreme <- physical_activity_ROI_BC %>% filter(guideline_minutes >= 1890.00) %>% 
+  select(Connect_ID, guideline_minutes, moderate_mins_week_aerobic, vigorous_mins_week,
+         SrvMRE_WalkHike_v1r0, SrvMRE_WalkHikeOften_v1r0, WalkHike_freq, SrvMRE_WalkHikeTime_v1r0, WalkHike_dur, SrvMRE_WalkHikeSpring_v1r0, SrvMRE_WalkHikeSummer_v1r0, SrvMRE_WalkHikeFall_v1r0, SrvMRE_WalkHikeWinter_v1r0, WalkHike_season,
+         SrvMRE_JogRun_v1r0, SrvMRE_JogRunOften_v1r0, JogRun_freq, SrvMRE_JogRunTime_v1r0, JogRun_dur, SrvMRE_JogRunSpring_v1r0, SrvMRE_JogRunSummer_v1r0, SrvMRE_JogRunFall_v1r0, SrvMRE_JogRunWinter_v1r0, JogRun_season,                              
+         SrvMRE_Tennis_v1r0, SrvMRE_TennisOften_v1r0, Tennis_freq, SrvMRE_TennisTime_v1r0, Tennis_dur, SrvMRE_TennisSpring_v1r0, SrvMRE_TennisSummer_v1r0, SrvMRE_TennisFall_v1r0, SrvMRE_TennisWinter_v1r0, Tennis_season,
+         SrvMRE_PlayGolf_v1r0, SrvMRE_GolfOften_v1r0, Golf_freq, SrvMRE_GolfTime_v1r0, Golf_dur, SrvMRE_GolfSpring_v1r0, SrvMRE_GolfSummer_v1r0, SrvMRE_GolfFall_v1r0, SrvMRE_GolfWinter_v1r0, Golf_season,
+         SrvMRE_SwimLaps_v1r0, SrvMRE_SwimLapsOften_v1r0, SwimLaps_freq, SrvMRE_SwimLapsTime_v1r0, SwimLaps_dur, SrvMRE_SwimLapsSpring_v1r0, SrvMRE_SwimLapsSummer_v1r0, SrvMRE_SwimLapsFall_v1r0, SrvMRE_SwimLapsWinter_v1r0, SwimLaps_season, 
+         SrvMRE_BikeRide_v1r0, SrvMRE_BikeOften_v1r0, Bike_freq, SrvMRE_BikeTime_v1r0, Bike_dur, SrvMRE_BikeSpring_v1r0, SrvMRE_BikeSummer_v1r0, SrvMRE_BikeFall_v1r0, SrvMRE_BikeWinter_v1r0, Bike_season,  
+         SrvMRE_Yoga_v1r0, SrvMRE_YogaOften_v1r0, Yoga_freq, SrvMRE_YogaTime_v1r0, Yoga_dur, SrvMRE_YogaSpring_v1r0, SrvMRE_YogaSummer_v1r0, SrvMRE_YogaFall_v1r0, SrvMRE_YogaWinter_v1r0, Yoga_season,  
+         SrvMRE_MartialArts_v1r0, SrvMRE_MAOften_v1r0, MA_freq, SrvMRE_MATime_v1r0, MA_dur, SrvMRE_MASpring_v1r0, SrvMRE_MASummer_v1r0, SrvMRE_MAFall_v1r0, SrvMRE_MAWinter_v1r0, MA_season,  
+         SrvMRE_Dance_v1r0, SrvMRE_DanceOften_v1r0, Dance_freq, SrvMRE_DanceTime_v1r0, Dance_dur, SrvMRE_DanceSpring_v1r0, SrvMRE_DanceSummer_v1r0, SrvMRE_DanceFall_v1r0, SrvMRE_DanceWinter_v1r0, Dance_season,  
+         SrvMRE_DownhillSki_v1r0, SrvMRE_SkiOften_v1r0, Ski_freq, SrvMRE_SkiTime_v1r0, Ski_dur, SrvMRE_SkiSpring_v1r0, SrvMRE_SkiSummer_v1r0, SrvMRE_SkiFall_v1r0, SrvMRE_SkiWinter_v1r0, Ski_season, 
+         SrvMRE_CrossCountry_v1r0, SrvMRE_CCSkiOften_v1r0, CCSki_freq, SrvMRE_CCSkiTime_v1r0, CCSki_dur, SrvMRE_CCSkiSpring_v1r0, SrvMRE_CCSkiSummer_v1r0, SrvMRE_CCSkiFall_v1r0, SrvMRE_CCSkiWinter_v1r0, CCSki_season, 
+         SrvMRE_Surf_v1r0, SrvMRE_SurfOften_v1r0, Surf_freq, SrvMRE_SurfTime_v1r0, Surf_dur, SrvMRE_SurfSpring_v1r0, SrvMRE_SurfSummer_v1r0, SrvMRE_SurfFall_v1r0, SrvMRE_SurfWinter_v1r0, Surf_season, 
+         SrvMRE_HICT_v1r0, SrvMRE_HICTOften_v1r0, HICT_freq, SrvMRE_HICTTime_v1r0, HICT_dur, SrvMRE_HICTSpring_v1r0, SrvMRE_HICTSummer_v1r0, SrvMRE_HICTFall_v1r0, SrvMRE_HICTWinter_v1r0, HICT_season,  
+         SrvMRE_OtherExercise_v1r0, SrvMRE_ExerciseOften_v1r0, Exercise_freq, SrvMRE_ExerciseTime_v1r0, Exercise_dur, SrvMRE_OtherExerciseSpring_v1r0, SrvMRE_OtherExerciseSummer_v1r0, SrvMRE_OtherExerciseFall_v1r0, SrvMRE_OtherExerciseWinter_v1r0, Exercise_season)
+
+write_csv(filtered_extreme, "/Users/crawfordbm/Documents/PhysicalActivityROI_ExtremeMinutes.csv")
 
 extreme_walk <- filtered_extreme %>% 
   filter(WalkHike_freq >= 5.50 & filtered_extreme$WalkHike_dur >= 2.000)
@@ -720,112 +736,143 @@ extreme_HICT <- filtered_extreme %>%
 extreme_other <- filtered_extreme %>% 
   filter(Exercise_freq >= 5.50 & filtered_extreme$Exercise_dur >= 2.000)
 
-#####################################Code for METhr and hrs per week descriptive statistics
+##pulling in module 1 data for stratified descriptive statistics
+recr_M1 <- bq_project_query(project, query="SELECT token,Connect_ID, d_821247024, d_914594314,  d_827220437,d_512820379,
+    d_949302066 , d_517311251  FROM  `nih-nci-dceg-connect-prod-6d04.FlatConnect.participants_JP` WHERE  d_821247024 = '197316935'     
+    AND d_747006172 = '104430631'
+    AND d_987563196 = '104430631'
+    AND d_536735468 ='231311385' 
+")
+recr_m1 <- bq_table_download(recr_M1,bigint = "integer64")
+cnames <- names(recr_m1)
+# Check that it doesn't match any non-number
+numbers_only <- function(x) !grepl("\\D", x)
+# to check variables in recr_noinact_wl1
+for (i in 1: length(cnames)){
+  varname <- cnames[i]
+  var<-pull(recr_m1,varname)
+  recr_m1[,cnames[i]] <- ifelse(numbers_only(var), as.numeric(as.character(var)), var)
+}
+sql_M1_1 <- bq_project_query(project, query="SELECT * FROM `nih-nci-dceg-connect-prod-6d04.FlatConnect.module1_v1_JP` where Connect_ID is not null")
+sql_M1_2 <- bq_project_query(project, query="SELECT * FROM `nih-nci-dceg-connect-prod-6d04.FlatConnect.module1_v2_JP` where Connect_ID is not null")
 
-#counting participants with a zero for each intensity score
-physical_activity_ROI_BC %>% summarise(Moderate_METhr_Zero_Count = sum(moderate_METhr == 0, na.rm = TRUE),
-                                       Vigorous_METhr_Zero_Count = sum(vigorous_METhr == 0, na.rm = TRUE), Overall_METhr_Zero_Count = sum(overall_METhr == 0, na.rm = TRUE))
 
-#summary stats including participants with a score of 0
-cat("Overall METhr - Min:", min(physical_activity_ROI_BC$overall_METhr, na.rm = TRUE), "\n")
-cat("Overall METhr - Max:", max(physical_activity_ROI_BC$overall_METhr, na.rm = TRUE), "\n")
-cat("Overall METhr - Mean:", mean(physical_activity_ROI_BC$overall_METhr, na.rm = TRUE), "\n")
-cat("Overall METhr - Median:", median(physical_activity_ROI_BC$overall_METhr, na.rm = TRUE), "\n")
-cat("Overall METhr - 25th Percentile:", quantile(physical_activity_ROI_BC$overall_METhr, 0.25, na.rm = TRUE), "\n")
-cat("Overall METhr - 75th Percentile:", quantile(physical_activity_ROI_BC$overall_METhr, 0.75, na.rm = TRUE), "\n\n")
+M1_V1 <- bq_table_download(sql_M1_1,bigint = "integer64") #1436 #1436 vars: 1507 01112023 
+M1_V2 <- bq_table_download(sql_M1_2,bigint = "integer64") #2333 #3033 01112023 var:1531 #6339 obs 1893 vars 05022023
 
-cat("Moderate METhr - Min:", min(physical_activity_ROI_BC$moderate_METhr, na.rm = TRUE), "\n")
-cat("Moderate METhr - Max:", max(physical_activity_ROI_BC$moderate_METhr, na.rm = TRUE), "\n")
-cat("Moderate METhr - Mean:", mean(physical_activity_ROI_BC$moderate_METhr, na.rm = TRUE), "\n")
-cat("Moderate METhr - Median:", median(physical_activity_ROI_BC$moderate_METhr, na.rm = TRUE), "\n")
-cat("Moderate METhr - 25th Percentile:", quantile(physical_activity_ROI_BC$moderate_METhr, 0.25, na.rm = TRUE), "\n")
-cat("Moderate METhr - 75th Percentile:", quantile(physical_activity_ROI_BC$moderate_METhr, 0.75, na.rm = TRUE), "\n\n")
+mod1_v1 <- M1_V1
+cnames <- names(M1_V1)
 
-cat("Vigorous METhr - Min:", min(physical_activity_ROI_BC$vigorous_METhr, na.rm = TRUE), "\n")
-cat("Vigorous METhr - Max:", max(physical_activity_ROI_BC$vigorous_METhr, na.rm = TRUE), "\n")
-cat("Vigorous METhr - Mean:", mean(physical_activity_ROI_BC$vigorous_METhr, na.rm = TRUE), "\n")
-cat("Vigorous METhr - Median:", median(physical_activity_ROI_BC$vigorous_METhr, na.rm = TRUE), "\n")
-cat("Vigorous METhr - 25th Percentile:", quantile(physical_activity_ROI_BC$vigorous_METhr, 0.25, na.rm = TRUE), "\n")
-cat("Vigorous METhr - 75th Percentile:", quantile(physical_activity_ROI_BC$vigorous_METhr, 0.75, na.rm = TRUE), "\n\n")
+###to check variables and convert to numeric
+for (i in 1: length(cnames)){
+  varname <- cnames[i]
+  var<-pull(mod1_v1,varname)
+  mod1_v1[,cnames[i]] <- ifelse(numbers_only(var), as.numeric(as.character(var)), var)
+}
+mod1_v2 <- M1_V2
+cnames <- names(M1_V2)
+###to check variables and convert to numeric
+for (i in 1: length(cnames)){
+  varname <- cnames[i]
+  var<-pull(mod1_v2,varname)
+  mod1_v2[,cnames[i]] <- ifelse(numbers_only(var), as.numeric(as.character(var)), var)
+}
 
-#counting participants with a zero for each intensity score
-physical_activity_ROI_BC %>% summarise(Moderate_hr_Zero_Count = sum(moderate_hrweek == 0, na.rm = TRUE),
-                                       Vigorous_hr_Zero_Count = sum(vigorous_hrweek == 0, na.rm = TRUE), Overall_hr_Zero_Count = sum(overall_hrweek == 0, na.rm = TRUE))
+M1_V1.var <- colnames(M1_V1)
+M1_V2.var <- colnames(M1_V2)
+var.matched <- M1_V1.var[which(M1_V1.var %in% M1_V2.var)]
+length(var.matched)  #1275 #1278 vars 01112023 #1348 vars 05022023
 
-cat("Overall hours/week - Min:", min(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
-cat("Overall hours/week - Max:", max(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
-cat("Overall hours/week - Mean:", mean(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
-cat("Overall hours/week - Median:", median(physical_activity_ROI_BC$overall_hrweek, na.rm = TRUE), "\n")
-cat("Overall hours/week - 25th Percentile:", quantile(physical_activity_ROI_BC$overall_hrweek, 0.25, na.rm = TRUE), "\n")
-cat("Overall hours/week - 75th Percentile:", quantile(physical_activity_ROI_BC$overall_hrweek, 0.75, na.rm = TRUE), "\n\n")
+V1_only_vars <- colnames(M1_V1)[colnames(M1_V1) %nin% var.matched] #232 #229 01112023 #159 05022023
+V2_only_vars <- colnames(M1_V2)[colnames(M1_V2) %nin% var.matched] #253 #253 01112023 #545 05022023
 
-cat("Moderate hours/week - Min:", min(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
-cat("Moderate hours/week - Max:", max(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
-cat("Moderate hours/week - Mean:", mean(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
-cat("Moderate hours/week - Median:", median(physical_activity_ROI_BC$moderate_hrweek, na.rm = TRUE), "\n")
-cat("Moderate hours/week - 25th Percentile:", quantile(physical_activity_ROI_BC$moderate_hrweek, 0.25, na.rm = TRUE), "\n")
-cat("Moderate hours/week - 75th Percentile:", quantile(physical_activity_ROI_BC$moderate_hrweek, 0.75, na.rm = TRUE), "\n\n")
+length(M1_V1$Connect_ID[M1_V1$Connect_ID %in% M1_V2$Connect_ID])
+#[1] 59 with the completion of two versions of Module1 
+#[1] 62 with completing both versions of M1 ###double checked 03/28/2023
+#68 double checked 05/02/2023
 
-cat("Vigorous hours/week - Min:", min(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
-cat("Vigorous hours/week - Max:", max(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
-cat("Vigorous hours/week - Mean:", mean(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
-cat("Vigorous hours/week - Median:", median(physical_activity_ROI_BC$vigorous_hrweek, na.rm = TRUE), "\n")
-cat("Vigorous hours/week - 25th Percentile:", quantile(physical_activity_ROI_BC$vigorous_hrweek, 0.25, na.rm = TRUE), "\n")
-cat("Vigorous hours/week - 75th Percentile:", quantile(physical_activity_ROI_BC$vigorous_hrweek, 0.75, na.rm = TRUE), "\n\n")
+common.IDs <- M1_V1$Connect_ID[M1_V1$Connect_ID %in% M1_V2$Connect_ID]
+M1_V1_common <- mod1_v1[,var.matched]
 
-#excluding participants with a zero score for Moderate, Vigorous, and Overall Intensity Scores
-moderate_non_zero <- physical_activity_ROI_BC %>%
-  filter(moderate_METhr > 0)  #keep only participants with a score greater than 0 for Moderate
-vigorous_non_zero <- physical_activity_ROI_BC %>%
-  filter(vigorous_METhr > 0)  #keep only participants with a score greater than 0 for Vigorous
-overall_non_zero <- physical_activity_ROI_BC %>%
-  filter(overall_METhr > 0)  #keep only participants with a score greater than 0 for Overall
+M1_V2_common <- mod1_v2[,var.matched]
+M1_V1_common$version <- 1
+M1_V2_common$version <- 2
 
-cat("Overall METhr - Min:", min(overall_non_zero$overall_METhr, na.rm = TRUE), "\n")
-cat("Overall METhr - 25th Percentile:", quantile(overall_non_zero$overall_METhr, 0.25, na.rm = TRUE), "\n")
-cat("Overall METhr - Median:", median(overall_non_zero$overall_METhr, na.rm = TRUE), "\n")
-cat("Overall METhr - Mean:", mean(overall_non_zero$overall_METhr, na.rm = TRUE), "\n")
-cat("Overall METhr - 75th Percentile:", quantile(overall_non_zero$overall_METhr, 0.75, na.rm = TRUE), "\n")
-cat("Overall METhr - Max:", max(overall_non_zero$overall_METhr, na.rm = TRUE), "\n\n")
+##to check the completion of M1 among these duplicates
+partM1_dups <- recr_m1[which(recr_m1$Connect_ID %in% common.IDs),]
+table(partM1_dups$d_949302066)
 
-cat("Moderate METhr - Min:", min(moderate_non_zero$moderate_METhr, na.rm = TRUE), "\n")
-cat("Moderate METhr - 25th Percentile:", quantile(moderate_non_zero$moderate_METhr, 0.25, na.rm = TRUE), "\n")
-cat("Moderate METhr - Median:", median(moderate_non_zero$moderate_METhr, na.rm = TRUE), "\n")
-cat("Moderate METhr - Mean:", mean(moderate_non_zero$moderate_METhr, na.rm = TRUE), "\n")
-cat("Moderate METhr - 75th Percentile:", quantile(moderate_non_zero$moderate_METhr, 0.75, na.rm = TRUE), "\n")
-cat("Moderate METhr - Max:", max(moderate_non_zero$moderate_METhr, na.rm = TRUE), "\n\n")
+M1_common  <- rbind(M1_V1_common, M1_V2_common) #including 136 duplicates (version 1 and version 2) from 68 participants 05022023
+#M1_response <- matrix(data=NA, nrow=118, ncol=967)
 
-cat("Vigorous METhr - Min:", min(vigorous_non_zero$vigorous_METhr, na.rm = TRUE), "\n")
-cat("Vigorous METhr - 25th Percentile:", quantile(vigorous_non_zero$vigorous_METhr, 0.25, na.rm = TRUE), "\n")
-cat("Vigorous METhr - Median:", median(vigorous_non_zero$vigorous_METhr, na.rm = TRUE), "\n")
-cat("Vigorous METhr - Mean:", mean(vigorous_non_zero$vigorous_METhr, na.rm = TRUE), "\n")
-cat("Vigorous METhr - 75th Percentile:", quantile(vigorous_non_zero$vigorous_METhr, 0.75, na.rm = TRUE), "\n")
-cat("Vigorous METhr - Max:", max(vigorous_non_zero$vigorous_METhr, na.rm = TRUE), "\n\n")
+m1_v1_only <- mod1_v1[,c("Connect_ID", V1_only_vars)] #230 vars 03282023 #160 vars 05/02/2023
+m1_v2_only <- mod1_v2[,c("Connect_ID", V2_only_vars)] #255 vars 03282023 #546 vars 05/02/2023
+m1_v1_only$version <- 1
+m1_v2_only$version <- 2
+#for (i in 1:length)
+##to check the completion in each version
+length(recr_m1$Connect_ID[which(recr_m1$Connect_ID %in% m1_v1_only$Connect_ID & recr_m1$d_949302066 ==231311385)]) #1364 03282023 # 1370 05022023
+length(recr_m1$Connect_ID[which(recr_m1$Connect_ID %in% m1_v2_only$Connect_ID & recr_m1$d_949302066 ==231311385)]) #4870 03282023 # 5731 05022023
 
-moderate_non_zero2 <- physical_activity_ROI_BC %>%
-  filter(moderate_hrweek > 0)  #keep only participants with a score greater than 0 for Moderate
-vigorous_non_zero2 <- physical_activity_ROI_BC %>%
-  filter(vigorous_hrweek > 0)  #keep only participants with a score greater than 0 for Vigorous
-overall_non_zero2 <- physical_activity_ROI_BC %>%
-  filter(overall_hrweek > 0)  #keep only participants with a score greater than 0 for Overall
+#library(janitor)
 
-cat("Overall hrweek - Min:", min(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n")
-cat("Overall hrweek - 25th Percentile:", quantile(overall_non_zero2$overall_hrweek, 0.25, na.rm = TRUE), "\n")
-cat("Overall hrweek - Median:", median(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n")
-cat("Overall hrweek - Mean:", mean(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n")
-cat("Overall hrweek - 75th Percentile:", quantile(overall_non_zero2$overall_hrweek, 0.75, na.rm = TRUE), "\n")
-cat("Overall hrweek - Max:", max(overall_non_zero2$overall_hrweek, na.rm = TRUE), "\n\n")
+m1_common <- rbind(M1_V1_common,M1_V2_common)
+m1_common_v1 <- base::merge(m1_common, m1_v1_only, by=c("Connect_ID","version"),all.x=TRUE)
+m1_combined_v1v2 <- base::merge(m1_common_v1,m1_v2_only,by=c("Connect_ID","version"),all.x=TRUE)
+m1_complete <- m1_combined_v1v2[which(m1_combined_v1v2$Connect_ID %in% recr_m1$Connect_ID[which(recr_m1$d_949302066 ==231311385 )]),] #7289 including duplicates 05022023
 
-cat("Moderate hrweek - Min:", min(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n")
-cat("Moderate hrweek - 25th Percentile:", quantile(moderate_non_zero2$moderate_hrweek, 0.25, na.rm = TRUE), "\n")
-cat("Moderate hrweek - Median:", median(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n")
-cat("Moderate hrweek - Mean:", mean(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n")
-cat("Moderate hrweek - 75th Percentile:", quantile(moderate_non_zero2$moderate_hrweek, 0.75, na.rm = TRUE), "\n")
-cat("Moderate hrweek - Max:", max(moderate_non_zero2$moderate_hrweek, na.rm = TRUE), "\n\n")
+m1_complete <- m1_complete %>% arrange(desc(version)) 
 
-cat("Vigorous hrweek - Min:", min(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n")
-cat("Vigorous hrweek - 25th Percentile:", quantile(vigorous_non_zero2$vigorous_hrweek, 0.25, na.rm = TRUE), "\n")
-cat("Vigorous hrweek - Median:", median(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n")
-cat("Vigorous hrweek - Mean:", mean(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n")
-cat("Vigorous hrweek - 75th Percentile:", quantile(vigorous_non_zero2$vigorous_hrweek, 0.75, na.rm = TRUE), "\n")
-cat("Vigorous hrweek - Max:", max(vigorous_non_zero2$vigorous_hrweek, na.rm = TRUE), "\n\n")
+m1_complete_nodup <- m1_complete[!duplicated(m1_complete$Connect_ID),] 
+table(m1_complete_nodup$version)
+
+parts <- "SELECT Connect_ID, token, D_512820379, D_471593703, state_d_934298480, D_230663853,
+D_335767902, D_982402227, D_919254129, D_699625233, D_564964481, D_795827569, D_544150384,
+D_371067537, D_430551721, D_821247024, D_914594314,  state_d_725929722, d_827220437, 
+D_949302066 , D_517311251, D_205553981, D_117249500, d_430551721, d_517311251, d_544150384, d_564964481, d_117249500,
+d_914594314, d_821247024, d_747006172, d_987563196, d_906417725, d_100767870 , d_878865966, d_255077064
+FROM `nih-nci-dceg-connect-prod-6d04.FlatConnect.participants_JP` 
+where Connect_ID IS NOT NULL"
+parts_table <- bq_project_query(project, parts)
+parts_data <- bq_table_download(parts_table, bigint = "integer64")
+
+parts_data$Connect_ID <- as.numeric(parts_data$Connect_ID) ###need to convert type- m1... is double and parts is character
+
+module1= left_join(m1_complete_nodup, parts_data, by="Connect_ID") 
+dim(module1)
+
+data_tib_m1 <- as_tibble(module1)
+#creating age variable 
+data_tib_m1$DOB <- paste0(data_tib_m1$D_544150384, "-", data_tib_m1$D_564964481, "-", data_tib_m1$D_795827569)  #YYYY-MM-DD
+data_tib_m1$DOB <- as.Date(data_tib_m1$DOB) #, format='%y-%m-%d') #convert from a string to an actual date
+currentDate <- as.Date(Sys.Date(), format='%y/%m/%d') #get todays date
+data_tib_m1$AGE <- time_length(difftime(currentDate, data_tib_m1$DOB), "years") #subtract DOB from todays date in years
+data_tib_m1$AGE <- round(as.numeric(data_tib_m1$AGE, digits=2)) #make it numeric, you can round as necessary
+
+options(max.print = 10000)  # Increase max.print to a higher number
+colnames(data_tib_m1)
+
+#creating binary age (lt40 vs ge40 )
+data_tib_m1 <- data_tib_m1 %>%
+  mutate(age_cat = case_when(
+    AGE < 40 ~ "youngeradult",
+    AGE >= 40 & AGE <= 65 ~ "middleadult",   # Less than or equal to 65 years old
+    AGE >= 66 & AGE <= 80 ~ "olderadult",  # Greater than 65 years old
+    TRUE ~ NA_character_  # Missing age or NA
+  ))
+
+module1_activity <- data_tib_m1 %>% 
+  select(Connect_ID, AGE, age_cat, d_827220437) %>%
+  mutate(Connect_ID = as.character(Connect_ID))
+
+#merging age and site from module 1 with physical activity data
+physical_activity_ROI_stratified <-  physical_activity_ROI_BC %>% 
+  left_join(module1_activity, by = "Connect_ID")
+
+#examining guideline_cat by age
+summary(freqlist(~age_cat, data = physical_activity_ROI_stratified))
+table(physical_activity_ROI_stratified$guideline_cat, physical_activity_ROI_stratified$age_cat)
+
+#examining guideline_cat by site
+summary(freqlist(~d_827220437, data = physical_activity_ROI_stratified))
+table(physical_activity_ROI_stratified$guideline_cat, physical_activity_ROI_stratified$d_827220437)
