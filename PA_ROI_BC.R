@@ -345,6 +345,11 @@ physical_activity_ROI <- physical_activity_ROI %>% mutate(
     & is.na(SrvMRE_OtherExercise_v1r0) ~ 1, #flag for those who skipped the questions
     TRUE ~ 0 #not skipped
   ))
+
+#flag to control optional code
+run_extra_code <- FALSE
+
+if (run_extra_code) { 
 summary(freqlist(~true_missing, data = physical_activity_ROI))
     
 #getting count of those who selected each activity
@@ -364,6 +369,7 @@ summary(freqlist(~SrvMRE_Surf_v1r0, data = physical_activity_ROI))
 summary(freqlist(~SrvMRE_HICT_v1r0, data = physical_activity_ROI))
 summary(freqlist(~SrvMRE_OtherExercise_v1r0, data = physical_activity_ROI))
 summary(freqlist(~SrvMRE_None_v1r0, data = physical_activity_ROI))
+}
 
 #Function to create frequency and duration variables for each activity
 calculate_rec_activity <- function(data, activity_var, frequency_input, frequency_output, duration_input, duration_output) {
@@ -450,6 +456,7 @@ physical_activity_ROI_BC <- physical_activity_ROI_BC %>%
       TRUE ~ 0
     ))
 
+if (run_extra_code) { 
 #checking above flag
 sample_walkhike_check <- physical_activity_ROI_BC %>% 
   select(Connect_ID, inconsistent_flag, SrvMRE_WalkHike_v1r0, SrvMRE_WalkHikeOften_v1r0, SrvMRE_WalkHikeTime_v1r0) %>%
@@ -520,6 +527,7 @@ qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_CrossCountry_v1r0", "SrvM
 qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Surf_v1r0", "SrvMRE_SurfTime_v1r0", "Surf_dur")
 qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_HICT_v1r0", "SrvMRE_HICTTime_v1r0", "HICT_dur")
 qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_OtherExercise_v1r0", "SrvMRE_ExerciseTime_v1r0", "Exercise_dur")      
+}
 
 ##Function to create seasonality variables, ensuring all season variables are numeric
 calculate_season <- function(data, activity_var, spring_input, summer_input, fall_input, winter_input, season_output) {
@@ -561,6 +569,7 @@ physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_Su
 physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_HICT_v1r0", "SrvMRE_HICTSpring_v1r0", "SrvMRE_HICTSummer_v1r0", "SrvMRE_HICTFall_v1r0", "SrvMRE_HICTWinter_v1r0", "HICT_season")
 physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_OtherExercise_v1r0", "SrvMRE_OtherExerciseSpring_v1r0", "SrvMRE_OtherExerciseSummer_v1r0", "SrvMRE_OtherExerciseFall_v1r0", "SrvMRE_OtherExerciseWinter_v1r0", "Exercise_season")
 
+if (run_extra_code) { 
 #sampling rows to check above calculations
 sample_JogRun_season <- physical_activity_ROI_BC %>%
   select(Connect_ID, SrvMRE_JogRunSpring_v1r0, SrvMRE_JogRunSummer_v1r0, SrvMRE_JogRunFall_v1r0, SrvMRE_JogRunWinter_v1r0, JogRun_season) %>%
@@ -568,6 +577,7 @@ sample_JogRun_season <- physical_activity_ROI_BC %>%
 sample_Bike_season <- physical_activity_ROI_BC %>%
   select(Connect_ID, SrvMRE_BikeSpring_v1r0, SrvMRE_BikeSummer_v1r0, SrvMRE_BikeFall_v1r0, SrvMRE_BikeWinter_v1r0, Bike_season) %>%
   sample_n(100)
+}
 
 #Calculating hours per week for each activity per Hayden's example --> jog_hrweek = jog_freq*jog_duration*jog_season
 physical_activity_ROI_BC$WalkHike_hrweek = physical_activity_ROI_BC$WalkHike_freq * physical_activity_ROI_BC$WalkHike_dur * physical_activity_ROI_BC$WalkHike_season
@@ -586,6 +596,7 @@ physical_activity_ROI_BC$Surf_hrweek = physical_activity_ROI_BC$Surf_freq * phys
 physical_activity_ROI_BC$HICT_hrweek = physical_activity_ROI_BC$HICT_freq * physical_activity_ROI_BC$HICT_dur * physical_activity_ROI_BC$HICT_season
 physical_activity_ROI_BC$Exercise_hrweek = physical_activity_ROI_BC$Exercise_freq * physical_activity_ROI_BC$Exercise_dur * physical_activity_ROI_BC$Exercise_season
 
+if (run_extra_code) { 
 #sampling rows to check above calculations
 sample_WalkHike_hrweek <- physical_activity_ROI_BC %>%
   select(Connect_ID, WalkHike_hrweek, WalkHike_freq, WalkHike_dur, WalkHike_season) %>%
@@ -593,6 +604,7 @@ sample_WalkHike_hrweek <- physical_activity_ROI_BC %>%
 sample_Yoga_hrweek <- physical_activity_ROI_BC %>%
   select(Connect_ID, Yoga_hrweek, Yoga_freq, Yoga_dur, Yoga_season) %>%
   sample_n(25)
+}
 
 #Calculating MET hrs for each activity
 physical_activity_ROI_BC$WalkHike_METhr = physical_activity_ROI_BC$WalkHike_hrweek * 4.8
@@ -611,10 +623,12 @@ physical_activity_ROI_BC$Surf_METhr = physical_activity_ROI_BC$Surf_hrweek * 3.0
 physical_activity_ROI_BC$HICT_METhr = physical_activity_ROI_BC$HICT_hrweek * 7.5
 physical_activity_ROI_BC$Exercise_METhr = physical_activity_ROI_BC$Exercise_hrweek * 3.8
 
+if (run_extra_code) { 
 #sampling 10 rows to check above calculations
 sample_WalkHike_METhr <- physical_activity_ROI_BC %>%
   select(Connect_ID, WalkHike_hrweek, WalkHike_METhr) %>%
   sample_n(10)
+}
 
 #Creating a single overall energy expenditure (METhr) score by summing the METhr variables across all activities
 #na.rm = TRUE to allow for calculation of total energy expenditure score even when input METhr values are missing, most won't participate in all activities 
@@ -630,6 +644,7 @@ physical_activity_ROI_BC$overall_hrweek <- rowSums(
     "Bike_hrweek", "Strength_hrweek", "Yoga_hrweek", "MA_hrweek", "Dance_hrweek", "Ski_hrweek", "CCSki_hrweek", "Surf_hrweek", 
     "HICT_hrweek", "Exercise_hrweek")], na.rm = TRUE)
 
+if (run_extra_code) { 
 #Checking overall METhr and hours per week variables
 sample_overall_METhr <- physical_activity_ROI_BC %>%
   select(Connect_ID, overall_METhr, WalkHike_METhr, JogRun_METhr, Tennis_METhr, Golf_METhr, SwimLaps_METhr, Bike_METhr, Strength_METhr, Yoga_METhr, MA_METhr, 
@@ -639,6 +654,7 @@ sample_overall_hrweek <- physical_activity_ROI_BC %>%
   select(Connect_ID, overall_hrweek, WalkHike_hrweek, JogRun_hrweek, Tennis_hrweek, Golf_hrweek, SwimLaps_hrweek, Bike_hrweek, Strength_hrweek, Yoga_hrweek, MA_hrweek, 
          Dance_hrweek, Ski_hrweek, CCSki_hrweek, Surf_hrweek, HICT_hrweek, Exercise_hrweek) %>%
   sample_n(10)
+}
 
 #Based on the ‘Connect PAQ Coding METs July 2024 .xlsx’ document:
 #Light = < 3.0 MET, Moderate = 3.0 – 5.9 MET, Vigorous = 6.0+ MET
@@ -677,6 +693,11 @@ physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
   strengthening_binary = case_when(SrvMRE_Strengthening_v1r0 == 1 ~ "Yes",
   SrvMRE_Strengthening_v1r0 == 0 | is.na(SrvMRE_Strengthening_v1r0) ~ "No"))
 
+#selecting final dataset 
+physical_activity_ROI_final <- physical_activity_ROI_BC %>%
+  select(Connect_ID, guideline_cat, inconsistent_flag, true_missing, strengthening_binary)
+
+if (run_extra_code) { 
 #############Summary statistics including participants with 0 guideline minutes
 quantile(physical_activity_ROI_BC$guideline_minutes, probs = c(0.25, 0.50, 0.75, 0.90, 0.95, 0.99), na.rm = TRUE)
 mean(physical_activity_ROI_BC$guideline_minutes)
@@ -883,13 +904,4 @@ site_table <- table(physical_activity_ROI_stratified$guideline_cat, physical_act
 site_prop <- prop.table(site_table, margin=1)
 print(site_prop)
 
-# 531629870	0 = HealthPartners
-# 548392715	1 = Henry Ford Health System
-# 125001209	2 = Kaiser Permanente Colorado
-# 327912200	3 = Kaiser Permanente Georgia
-# 300267574	4 = Kaiser Permanente Hawaii
-# 452412599	5 = Kaiser Permanente Northwest
-# 303349821	6 = Marshfield Clinic Health System
-# 657167265	7 = Sanford Health
-# 809703864	8 = University of Chicago Medicine
-# 472940358	10 = Baylor Scott & White Health
+}
