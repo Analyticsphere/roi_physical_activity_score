@@ -29,7 +29,28 @@ library(bigrquery)
 library(glue)
 library(arsenal)
 library(readr)
+library(foreach)
+library(stringr)
+#library(plyr)
+#library(expss) ###to add labels
+library(epiDisplay) ##recommended applied here crosstable, tab1
+library(gmodels) ##recommended
+library(magrittr)
+library(gtsummary)
+library(rio)
 
+library(ggplot2)
+library(gridExtra)
+library(scales)
+library(gt)
+library(tinytex)
+library(data.table) ###to write or read and data management 
+library(tidyverse) ###for data management
+library(reshape)  ###to work on transition from long to wide or wide to long data
+library(listr) ###to work on a list of vector, files or..
+library(sqldf) ##sql
+library(lubridate) ###date time
+library(kableExtra)
 
 ## Connect to Database =========================================================
 bq_auth() # Authenticate with BigQuery
@@ -393,7 +414,6 @@ physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"Srv
 physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_OtherExercise_v1r0","SrvMRE_ExerciseOften_v1r0","Exercise_freq","SrvMRE_ExerciseTime_v1r0","Exercise_dur")
 
 #Checking to make sure that those with 0 or NA for base variable are missing follow up variables
-#WalkHike has 4 participants, Bike has 1 participant, 3 strengthening, 1 yoga, 1 dance, 1 ski, 2 other exercise
 WalkHike_check <- physical_activity_ROI_BC %>% 
   filter(is.na(SrvMRE_WalkHike_v1r0) | SrvMRE_WalkHike_v1r0 == 0) %>% 
   summarise_at(vars(SrvMRE_WalkHikeOften_v1r0, SrvMRE_WalkHikeTime_v1r0), ~ sum(!is.na(.)))
@@ -756,76 +776,62 @@ for (i in 1: length(cnames)){
 sql_M1_1 <- bq_project_query(project, query="SELECT * FROM `nih-nci-dceg-connect-prod-6d04.FlatConnect.module1_v1_JP` where Connect_ID is not null")
 sql_M1_2 <- bq_project_query(project, query="SELECT * FROM `nih-nci-dceg-connect-prod-6d04.FlatConnect.module1_v2_JP` where Connect_ID is not null")
 
+M1_V1 <- bq_table_download(sql_M1_1,bigint = "integer64") 
+M1_V2 <- bq_table_download(sql_M1_2,bigint = "integer64") 
 
-M1_V1 <- bq_table_download(sql_M1_1,bigint = "integer64") #1436 #1436 vars: 1507 01112023 
-M1_V2 <- bq_table_download(sql_M1_2,bigint = "integer64") #2333 #3033 01112023 var:1531 #6339 obs 1893 vars 05022023
+# Select matching column names
+M1_V1_vars <- colnames(M1_V1)
+M1_V2_vars <- colnames(M1_V2)
+common_vars <- intersect(M1_V1_vars, M1_V2_vars)
 
-mod1_v1 <- M1_V1
-cnames <- names(M1_V1)
+# Subset to common columns
+M1_V1_common <- M1_V1[, common_vars]
+M1_V2_common <- M1_V2[, common_vars]
 
-###to check variables and convert to numeric
-for (i in 1: length(cnames)){
-  varname <- cnames[i]
-  var<-pull(mod1_v1,varname)
-  mod1_v1[,cnames[i]] <- ifelse(numbers_only(var), as.numeric(as.character(var)), var)
-}
-mod1_v2 <- M1_V2
-cnames <- names(M1_V2)
-###to check variables and convert to numeric
-for (i in 1: length(cnames)){
-  varname <- cnames[i]
-  var<-pull(mod1_v2,varname)
-  mod1_v2[,cnames[i]] <- ifelse(numbers_only(var), as.numeric(as.character(var)), var)
-}
-
-M1_V1.var <- colnames(M1_V1)
-M1_V2.var <- colnames(M1_V2)
-var.matched <- M1_V1.var[which(M1_V1.var %in% M1_V2.var)]
-length(var.matched)  #1275 #1278 vars 01112023 #1348 vars 05022023
-
-V1_only_vars <- colnames(M1_V1)[colnames(M1_V1) %nin% var.matched] #232 #229 01112023 #159 05022023
-V2_only_vars <- colnames(M1_V2)[colnames(M1_V2) %nin% var.matched] #253 #253 01112023 #545 05022023
-
-length(M1_V1$Connect_ID[M1_V1$Connect_ID %in% M1_V2$Connect_ID])
-#[1] 59 with the completion of two versions of Module1 
-#[1] 62 with completing both versions of M1 ###double checked 03/28/2023
-#68 double checked 05/02/2023
-
-common.IDs <- M1_V1$Connect_ID[M1_V1$Connect_ID %in% M1_V2$Connect_ID]
-M1_V1_common <- mod1_v1[,var.matched]
-
-M1_V2_common <- mod1_v2[,var.matched]
+# Add version indicator
 M1_V1_common$version <- 1
 M1_V2_common$version <- 2
 
-##to check the completion of M1 among these duplicates
-partM1_dups <- recr_m1[which(recr_m1$Connect_ID %in% common.IDs),]
-table(partM1_dups$d_949302066)
+# Identify columns with mismatched types
+mismatched_cols <- names(M1_V1_common)[sapply(names(M1_V1_common), function(col) {
+  class(M1_V1_common[[col]]) != class(M1_V2_common[[col]])
+})]
 
-M1_common  <- rbind(M1_V1_common, M1_V2_common) #including 136 duplicates (version 1 and version 2) from 68 participants 05022023
-#M1_response <- matrix(data=NA, nrow=118, ncol=967)
+# Convert mismatched columns to character for consistency
+M1_V1_common <- M1_V1_common %>%
+  mutate(across(all_of(mismatched_cols), as.character))
+M1_V2_common <- M1_V2_common %>%
+  mutate(across(all_of(mismatched_cols), as.character))
 
-m1_v1_only <- mod1_v1[,c("Connect_ID", V1_only_vars)] #230 vars 03282023 #160 vars 05/02/2023
-m1_v2_only <- mod1_v2[,c("Connect_ID", V2_only_vars)] #255 vars 03282023 #546 vars 05/02/2023
-m1_v1_only$version <- 1
-m1_v2_only$version <- 2
-#for (i in 1:length)
-##to check the completion in each version
-length(recr_m1$Connect_ID[which(recr_m1$Connect_ID %in% m1_v1_only$Connect_ID & recr_m1$d_949302066 ==231311385)]) #1364 03282023 # 1370 05022023
-length(recr_m1$Connect_ID[which(recr_m1$Connect_ID %in% m1_v2_only$Connect_ID & recr_m1$d_949302066 ==231311385)]) #4870 03282023 # 5731 05022023
+# Combine both versions for participants who completed both
+M1_common <- bind_rows(M1_V1_common, M1_V2_common) %>%
+  arrange(Connect_ID, desc(version))
 
-#library(janitor)
+# For columns unique to each version
+V1_only_vars <- setdiff(M1_V1_vars, common_vars)
+V2_only_vars <- setdiff(M1_V2_vars, common_vars)
 
-m1_common <- rbind(M1_V1_common,M1_V2_common)
-m1_common_v1 <- base::merge(m1_common, m1_v1_only, by=c("Connect_ID","version"),all.x=TRUE)
-m1_combined_v1v2 <- base::merge(m1_common_v1,m1_v2_only,by=c("Connect_ID","version"),all.x=TRUE)
-m1_complete <- m1_combined_v1v2[which(m1_combined_v1v2$Connect_ID %in% recr_m1$Connect_ID[which(recr_m1$d_949302066 ==231311385 )]),] #7289 including duplicates 05022023
+# Subset each version for unique columns and add version indicator
+m1_v1_only <- M1_V1[, c("Connect_ID", V1_only_vars)] %>%
+  mutate(version = 1)
+m1_v2_only <- M1_V2[, c("Connect_ID", V2_only_vars)] %>%
+  mutate(version = 2)
 
-m1_complete <- m1_complete %>% arrange(desc(version)) 
+# Combine the unique and common data
+m1_common_v1 <- left_join(M1_common, m1_v1_only, by = c("Connect_ID", "version"))
+m1_combined_v1v2 <- left_join(m1_common_v1, m1_v2_only, by = c("Connect_ID", "version"))
 
-m1_complete_nodup <- m1_complete[!duplicated(m1_complete$Connect_ID),] 
-table(m1_complete_nodup$version)
+# Filter for complete cases where specific completion criteria are met
+m1_complete <- m1_combined_v1v2 %>%
+  filter(Connect_ID %in% recr_m1$Connect_ID[recr_m1$d_949302066 == 231311385]) %>%
+  arrange(desc(version))
 
+# Remove duplicates, keeping only the most recent version for each Connect_ID
+m1_complete_nodup <- m1_complete[!duplicated(m1_complete$Connect_ID),]
+
+m1_complete_nodup$Connect_ID <- as.numeric(m1_complete_nodup$Connect_ID)
+
+### Define requirements of the data: only including those with connect_id ne null, will apply additional criteria when merging with module 2 data
 parts <- "SELECT Connect_ID, token, D_512820379, D_471593703, state_d_934298480, D_230663853,
 D_335767902, D_982402227, D_919254129, D_699625233, D_564964481, D_795827569, D_544150384,
 D_371067537, D_430551721, D_821247024, D_914594314,  state_d_725929722, d_827220437, 
@@ -833,6 +839,7 @@ D_949302066 , D_517311251, D_205553981, D_117249500, d_430551721, d_517311251, d
 d_914594314, d_821247024, d_747006172, d_987563196, d_906417725, d_100767870 , d_878865966, d_255077064
 FROM `nih-nci-dceg-connect-prod-6d04.FlatConnect.participants_JP` 
 where Connect_ID IS NOT NULL"
+
 parts_table <- bq_project_query(project, parts)
 parts_data <- bq_table_download(parts_table, bigint = "integer64")
 
@@ -871,8 +878,23 @@ physical_activity_ROI_stratified <-  physical_activity_ROI_BC %>%
 
 #examining guideline_cat by age
 summary(freqlist(~age_cat, data = physical_activity_ROI_stratified))
-table(physical_activity_ROI_stratified$guideline_cat, physical_activity_ROI_stratified$age_cat)
+age_table <- table(physical_activity_ROI_stratified$guideline_cat, physical_activity_ROI_stratified$age_cat)
+age_prop <- prop.table(age_table, margin=1)
+print(age_prop)
 
 #examining guideline_cat by site
 summary(freqlist(~d_827220437, data = physical_activity_ROI_stratified))
-table(physical_activity_ROI_stratified$guideline_cat, physical_activity_ROI_stratified$d_827220437)
+site_table <- table(physical_activity_ROI_stratified$guideline_cat, physical_activity_ROI_stratified$d_827220437)
+site_prop <- prop.table(site_table, margin=1)
+print(site_prop)
+
+# 531629870	0 = HealthPartners
+# 548392715	1 = Henry Ford Health System
+# 125001209	2 = Kaiser Permanente Colorado
+# 327912200	3 = Kaiser Permanente Georgia
+# 300267574	4 = Kaiser Permanente Hawaii
+# 452412599	5 = Kaiser Permanente Northwest
+# 303349821	6 = Marshfield Clinic Health System
+# 657167265	7 = Sanford Health
+# 809703864	8 = University of Chicago Medicine
+# 472940358	10 = Baylor Scott & White Health
