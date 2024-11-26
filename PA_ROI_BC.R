@@ -413,53 +413,48 @@ physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"Srv
 physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_HICT_v1r0","SrvMRE_HICTOften_v1r0","HICT_freq","SrvMRE_HICTTime_v1r0","HICT_dur")
 physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_OtherExercise_v1r0","SrvMRE_ExerciseOften_v1r0","Exercise_freq","SrvMRE_ExerciseTime_v1r0","Exercise_dur")
 
-#Checking to make sure that those with 0 or NA for base variable are missing follow up variables
-WalkHike_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_WalkHike_v1r0) | SrvMRE_WalkHike_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_WalkHikeOften_v1r0, SrvMRE_WalkHikeTime_v1r0), ~ sum(!is.na(.)))
-JogRun_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_JogRun_v1r0) | SrvMRE_JogRun_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_JogRunOften_v1r0, SrvMRE_JogRunTime_v1r0), ~ sum(!is.na(.)))
-Tennis_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_Tennis_v1r0) | SrvMRE_Tennis_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_TennisOften_v1r0, SrvMRE_TennisTime_v1r0), ~ sum(!is.na(.)))
-Golf_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_PlayGolf_v1r0) | SrvMRE_PlayGolf_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_GolfOften_v1r0, SrvMRE_GolfTime_v1r0), ~ sum(!is.na(.)))
-SwimLaps_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_SwimLaps_v1r0) | SrvMRE_SwimLaps_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_SwimLapsOften_v1r0, SrvMRE_SwimLapsTime_v1r0), ~ sum(!is.na(.)))
-Bike_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_BikeRide_v1r0) | SrvMRE_BikeRide_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_BikeOften_v1r0, SrvMRE_BikeTime_v1r0), ~ sum(!is.na(.)))
-Strength_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_Strengthening_v1r0) | SrvMRE_Strengthening_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_StrengthOften_v1r0, SrvMRE_StrengthTime_v1r0), ~ sum(!is.na(.)))
-Yoga_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_Yoga_v1r0) | SrvMRE_Yoga_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_YogaOften_v1r0, SrvMRE_YogaTime_v1r0), ~ sum(!is.na(.)))
-MA_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_MartialArts_v1r0) | SrvMRE_MartialArts_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_MAOften_v1r0, SrvMRE_MATime_v1r0), ~ sum(!is.na(.)))
-Dance_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_Dance_v1r0) | SrvMRE_Dance_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_DanceOften_v1r0, SrvMRE_DanceTime_v1r0), ~ sum(!is.na(.)))
-Ski_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_DownhillSki_v1r0) | SrvMRE_DownhillSki_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_SkiOften_v1r0, SrvMRE_SkiTime_v1r0), ~ sum(!is.na(.)))
-CCSki_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_CrossCountry_v1r0) | SrvMRE_CrossCountry_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_CCSkiOften_v1r0, SrvMRE_CCSkiTime_v1r0), ~ sum(!is.na(.)))
-Surf_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_Surf_v1r0) | SrvMRE_Surf_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_SurfOften_v1r0, SrvMRE_SurfTime_v1r0), ~ sum(!is.na(.)))
-HICT_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_HICT_v1r0) | SrvMRE_HICT_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_HICTOften_v1r0, SrvMRE_HICTTime_v1r0), ~ sum(!is.na(.)))
-Exercise_check <- physical_activity_ROI_BC %>% 
-  filter(is.na(SrvMRE_OtherExercise_v1r0) | SrvMRE_OtherExercise_v1r0 == 0) %>% 
-  summarise_at(vars(SrvMRE_ExerciseOften_v1r0, SrvMRE_ExerciseTime_v1r0), ~ sum(!is.na(.)))
+#Creating variable that flags participants with inconsistent skip logic 
+physical_activity_ROI_BC <- physical_activity_ROI_BC %>%
+  mutate(
+    inconsistent_flag = case_when(
+      (SrvMRE_WalkHike_v1r0 == 0 | is.na(SrvMRE_WalkHike_v1r0)) &
+        (!is.na(SrvMRE_WalkHikeOften_v1r0) | !is.na(SrvMRE_WalkHikeTime_v1r0))|
+        (SrvMRE_JogRun_v1r0 == 0 | is.na(SrvMRE_JogRun_v1r0)) &
+        (!is.na(SrvMRE_JogRunOften_v1r0) | !is.na(SrvMRE_JogRunTime_v1r0))|
+        (SrvMRE_Tennis_v1r0 == 0 | is.na(SrvMRE_Tennis_v1r0)) &
+        (!is.na(SrvMRE_TennisOften_v1r0) | !is.na(SrvMRE_TennisTime_v1r0))|
+        (SrvMRE_PlayGolf_v1r0 == 0 | is.na(SrvMRE_PlayGolf_v1r0)) &
+        (!is.na(SrvMRE_GolfOften_v1r0) | !is.na(SrvMRE_GolfTime_v1r0))|
+        (SrvMRE_SwimLaps_v1r0 == 0 | is.na(SrvMRE_SwimLaps_v1r0)) &
+        (!is.na(SrvMRE_SwimLapsOften_v1r0) | !is.na(SrvMRE_SwimLapsTime_v1r0))|
+        (SrvMRE_BikeRide_v1r0 == 0 | is.na(SrvMRE_BikeRide_v1r0)) &
+        (!is.na(SrvMRE_BikeOften_v1r0) | !is.na(SrvMRE_BikeTime_v1r0))|
+        (SrvMRE_Strengthening_v1r0 == 0 | is.na(SrvMRE_Strengthening_v1r0)) &
+        (!is.na(SrvMRE_StrengthOften_v1r0) | !is.na(SrvMRE_StrengthTime_v1r0))|
+        (SrvMRE_Yoga_v1r0 == 0 | is.na(SrvMRE_Yoga_v1r0)) &
+        (!is.na(SrvMRE_YogaOften_v1r0) | !is.na(SrvMRE_YogaTime_v1r0))|
+        (SrvMRE_MartialArts_v1r0 == 0 | is.na(SrvMRE_MartialArts_v1r0)) &
+        (!is.na(SrvMRE_MAOften_v1r0) | !is.na(SrvMRE_MATime_v1r0))|
+        (SrvMRE_Dance_v1r0 == 0 | is.na(SrvMRE_Dance_v1r0)) &
+        (!is.na(SrvMRE_DanceOften_v1r0) | !is.na(SrvMRE_DanceTime_v1r0))|
+        (SrvMRE_DownhillSki_v1r0 == 0 | is.na(SrvMRE_DownhillSki_v1r0)) &
+        (!is.na(SrvMRE_SkiOften_v1r0) | !is.na(SrvMRE_SkiTime_v1r0))|
+        (SrvMRE_CrossCountry_v1r0 == 0 | is.na(SrvMRE_CrossCountry_v1r0)) &
+        (!is.na(SrvMRE_CCSkiOften_v1r0) | !is.na(SrvMRE_CCSkiTime_v1r0))|
+        (SrvMRE_Surf_v1r0 == 0 | is.na(SrvMRE_Surf_v1r0)) &
+        (!is.na(SrvMRE_SurfOften_v1r0) | !is.na(SrvMRE_SurfTime_v1r0))|
+        (SrvMRE_HICT_v1r0 == 0 | is.na(SrvMRE_HICT_v1r0)) &
+        (!is.na(SrvMRE_HICTOften_v1r0) | !is.na(SrvMRE_HICTTime_v1r0))|
+        (SrvMRE_OtherExercise_v1r0 == 0 | is.na(SrvMRE_OtherExercise_v1r0)) &
+        (!is.na(SrvMRE_ExerciseOften_v1r0) | !is.na(SrvMRE_ExerciseTime_v1r0)) ~ 1,
+      TRUE ~ 0
+    ))
 
+#checking above flag
+sample_walkhike_check <- physical_activity_ROI_BC %>% 
+  select(Connect_ID, inconsistent_flag, SrvMRE_WalkHike_v1r0, SrvMRE_WalkHikeOften_v1r0, SrvMRE_WalkHikeTime_v1r0) %>%
+ filter (inconsistent_flag == 1 & (SrvMRE_WalkHike_v1r0 == 0 | is.na(SrvMRE_WalkHike_v1r0)))
+ 
 #Checking to see if any values were assigned incorrectly for frequency and duration
 qc_activity_freq <- function(data, base_var, input_var, output_var) {
   data %>% 
