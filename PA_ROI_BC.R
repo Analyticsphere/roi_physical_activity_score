@@ -695,7 +695,7 @@ physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
 
 #selecting final dataset 
 physical_activity_ROI_final <- physical_activity_ROI_BC %>%
-  select(Connect_ID, guideline_cat, inconsistent_flag, true_missing, strengthening_binary)
+  select(Connect_ID, guideline_cat, strengthening_binary, true_missing)
 
 if (run_extra_code) { 
 #############Summary statistics including participants with 0 guideline minutes
