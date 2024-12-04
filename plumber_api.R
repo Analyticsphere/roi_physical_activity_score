@@ -9,6 +9,7 @@ library(glue)
 
 #* Heartbeat endpoint for testing
 #* @get /heartbeat
+#* @post /heartbeat
 #* @response 200 A message indicating the API is alive
 function() {
   list(
@@ -20,8 +21,9 @@ function() {
 
 #* Generate physical activity scores and write to BigQuery table.
 #* @param project_id GCP project
+#* @get /update_roi_physical_activity_data
 #* @post /update_roi_physical_activity_data
-function(project_id="nih-nci-dceg-connect-stg-5519") {
+function(project_id=Sys.getenv("PROJECT_ID")) {
 
   # Define dataset and table information
   dataset_id <- "ReturnOfInformation"

@@ -37,8 +37,3 @@ COPY plumber_api.R .
 
 # Define the entrypoint to start the Plumber API
 ENTRYPOINT ["R", "-e", "pr <- plumber::plumb('plumber_api.R'); pr$run(host='0.0.0.0', port=as.numeric(Sys.getenv('PORT')))"]
-
-#EXPOSE 8000
-# ENTRYPOINT ["R", "-e", "pr <- plumber::plumb('plumber_api.R'); pr$run(host='0.0.0.0', port=as.numeric('8000'))"]
-
-
