@@ -19,7 +19,7 @@ steps:
   args: [
     'run', 'deploy', 'roi',
     '--image=gcr.io/$PROJECT_ID/roi:$COMMIT_SHA',
-    '--cpu=2', '--memory=16Gi',
+    '--cpu=4', '--memory=16Gi',
     '--region=us-central1',
     '--service-account=qa-qc-stage@$PROJECT_ID.iam.gserviceaccount.com'
   ]
