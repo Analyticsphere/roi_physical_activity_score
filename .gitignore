@@ -5,3 +5,6 @@
 *.Rproj
 *.csv
 *.xlsx
+.Rproj.user/
+.env
+.DS_Store
