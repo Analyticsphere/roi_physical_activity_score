@@ -43,7 +43,7 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
                                   table=table_id)
 
   # Append the data to the existing table
-  bq_table_upload(
+  bigrquery::bq_table_upload(
     x = bq_table,
     values = data_to_append,
     fields = NULL, # BigQuery infers schema from the existing table
