@@ -21,7 +21,8 @@ steps:
     '--image=gcr.io/$PROJECT_ID/roi:$COMMIT_SHA',
     '--cpu=4', '--memory=16Gi',
     '--region=us-central1',
-    '--service-account=qa-qc-stage@$PROJECT_ID.iam.gserviceaccount.com'
+    '--service-account=qa-qc-stage@$PROJECT_ID.iam.gserviceaccount.com',
+    '--set-env-vars=PROJECT_ID=$PROJECT_ID'
   ]
 
 options:

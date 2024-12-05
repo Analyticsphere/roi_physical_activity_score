@@ -55,7 +55,7 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
   message <- glue::glue("Appended {num_rows} rows to {dataset_id}.{table_id}.\n")
   print(message)
 
-  if (Sys.getenv("PROJECT_ID") != "") { print(Sys.getenv("PROJECT_ID")) }
+  cat("Project ID:", Sys.getenv("PROJECT_ID"), "\n")
 
   list(
     status = "success",
