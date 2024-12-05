@@ -52,11 +52,13 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
   )
 
   # Print the number of rows appended
-  message <- glue(
-    "Successfully appended {num_rows} rows to {dataset_id}.{table_id}.\n"
-    )
-  cat(message)
-  return(message)
+  message <- glue::glue("Appended {num_rows} rows to {dataset_id}.{table_id}.\n")
+
+  list(
+    status = "success",
+    message = message,
+    timestamp = Sys.time()
+  )
 
 }
 

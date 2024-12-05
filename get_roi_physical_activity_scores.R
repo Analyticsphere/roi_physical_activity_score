@@ -4,9 +4,9 @@ get_roi_physical_activity_scores <- function(project="nih-nci-dceg-connect-stg-5
   dataset <- "FlatConnect"
 
   library(dplyr)
-  # library(DBI)
-  # library(bigrquery)
-  # library(glue)
+  library(DBI)
+  library(bigrquery)
+  library(glue)
 
   ## Connect to Database =========================================================
   bigrquery::bq_auth() # Authenticate with BigQuery
@@ -527,7 +527,7 @@ get_roi_physical_activity_scores <- function(project="nih-nci-dceg-connect-stg-5
   physical_activity_ROI_final <- physical_activity_ROI_BC %>%
     select(Connect_ID, guideline_cat, strengthening_binary, true_missing) %>%
     mutate(
-      Connect_ID = as.character(Connect_ID),           # Convert Connect_ID to string
+      Connect_ID = as.character(Connect_ID),        # Convert Connect_ID to string
       guideline_cat = as.character(guideline_cat),  # Convert guideline_cat to string
       strengthening_binary = case_when(
         strengthening_binary == "Yes" ~ TRUE,       # "Yes" becomes TRUE
