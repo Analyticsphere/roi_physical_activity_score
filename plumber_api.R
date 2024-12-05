@@ -53,6 +53,7 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
 
   # Print the number of rows appended
   message <- glue::glue("Appended {num_rows} rows to {dataset_id}.{table_id}.\n")
+  print(message)
 
   list(
     status = "success",
