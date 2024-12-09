@@ -22,8 +22,8 @@ steps:
     '--image=gcr.io/$PROJECT_ID/roi:$COMMIT_SHA',
     '--cpu=4', '--memory=16Gi',
     '--region=us-central1',
-    '--service-account=${_SERVICE_ACCOUNT}', # Directly use the substitution variable
-    '--set-env-vars=PROJECT_ID=$PROJECT_ID'  # Set runtime env var for use in R
+    '--service-account=$SERVICE_ACCOUNT_EMAIL', # Directly use the substitution variable
+    '--set-env-vars=PROJECT_ID=$PROJECT_ID'     # Set runtime env var for use in R
   ]
 
 options:
