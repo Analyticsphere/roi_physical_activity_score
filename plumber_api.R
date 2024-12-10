@@ -4,6 +4,9 @@ library(DBI)
 library(bigrquery)
 library(glue)
 
+
+
+
 #* @apiTitle Return of Information
 #* @apiDescription Plumber example description.
 
@@ -19,6 +22,9 @@ function() {
   )
 }
 
+
+
+
 #* Generate physical activity scores and write to BigQuery table.
 #* @param project_id GCP project
 #* @get /update_roi_physical_activity_data
@@ -26,7 +32,7 @@ function() {
 function(project_id=Sys.getenv("PROJECT_ID")) {
 
   # Define dataset and table information
-  dataset_id <- "ReturnOfInformation"
+  dataset_id <- "ROI"
   table_id   <- "physical_activity"
 
   # Get data
@@ -55,7 +61,8 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
   message <- glue::glue("Appended {num_rows} rows to {dataset_id}.{table_id}.\n")
   print(message)
 
-  cat("Project ID:", Sys.getenv("PROJECT_ID"), "\n")
+  # Check that Project ID environment variable is set correctly for current environment
+  # cat("Project ID:", Sys.getenv("PROJECT_ID"), "\n")
 
   list(
     status = "success",
