@@ -371,52 +371,50 @@ summary(freqlist(~SrvMRE_None_v1r0, data = physical_activity_ROI))
 }
 
 #Function to create frequency and duration variables for each activity
-calculate_rec_activity <- function(data, activity_var, frequency_input, frequency_output, duration_input, duration_output) {
+calculate_rec_activity <- function(data, frequency_input, frequency_output, duration_input, duration_output) {
   data <- mutate(data,
-    #Creating frequency variables for each activity
-    !!frequency_output := case_when(
-      !!sym(activity_var) == 1 & is.na(!!sym(frequency_input)) ~ 0,  #set to 0 if yes for activity, but missing freq response
-      !!sym(activity_var) == 1 & !is.na(!!sym(frequency_input)) ~ case_when( #if yes for activity and not missing freq response
-      !!sym(frequency_input) == 239152340 ~ 0.24,  #one day / 4.25 weeks per month = 0.24 days per week
-      !!sym(frequency_input) == 582006876 ~ 0.59,  #averaged 2.5 days / 4.25 weeks per month = 0.59 days per week
-      !!sym(frequency_input) == 645894551 ~ 1.5,   #averaged 1 to 2 days per week
-      !!sym(frequency_input) == 996315715 ~ 3.5,   #averaged 3 to 4 days per week
-      !!sym(frequency_input) == 671267928 ~ 5.5,   #averaged 5 to 6 days per week
-      !!sym(frequency_input) == 647504893 ~ 7),    #everyday
-      !!sym(activity_var) != 1 ~ 0 #if they didn't participate in activity (activity_var NE 1), frequency_output set to 0 -- this also includes those who selected none of the above or skipped the section
-    ),
-    #Creating duration variables for each activity
-    !!duration_output := case_when(
-      !!sym(activity_var) == 1 & is.na(!!sym(duration_input)) ~ 0, #set to 0 if yes for activity, but missing dur response
-      !!sym(activity_var) == 1 & !is.na(!!sym(duration_input)) ~ case_when( #if yes for activity and not missing dur response
-      !!sym(duration_input) == 428999623 ~ 0.125,  #averaged 7.5 minutes/60 = 0.125 hours
-      !!sym(duration_input) == 248303092 ~ 0.383,  #averaged 23 minutes/60 = 0.383 hours
-      !!sym(duration_input) == 206020811 ~ 0.625,  #averaged 37.5 minutes/60 = 0.625 hours
-      !!sym(duration_input) == 264163865 ~ 0.867,  #averaged 52 minutes/60 = 0.867 hours
-      !!sym(duration_input) == 638092100 ~ 1,      #one hr
-      !!sym(duration_input) == 628177728 ~ 2,	     #two hrs
-      !!sym(duration_input) == 805918496 ~ 3),		 #three hrs
-      !!sym(activity_var) != 1 ~ 0 #if they didn't participate in activity (activity_var NE 1), duration_output set to 0 -- this also includes those who selected none of the above or skipped the section
-    ))
- return(data)
+                 #Creating frequency variables for each activity
+                 !!frequency_output := case_when(
+                   !is.na(!!sym(frequency_input)) ~ case_when(  #calculate frequency based on follow up responses
+                     !!sym(frequency_input) == 239152340 ~ 0.24,  #one day / 4.25 weeks per month = 0.24 days per week
+                     !!sym(frequency_input) == 582006876 ~ 0.59,  #averaged 2.5 days / 4.25 weeks per month = 0.59 days per week
+                     !!sym(frequency_input) == 645894551 ~ 1.5,   #averaged 1 to 2 days per week
+                     !!sym(frequency_input) == 996315715 ~ 3.5,   #averaged 3 to 4 days per week
+                     !!sym(frequency_input) == 671267928 ~ 5.5,   #averaged 5 to 6 days per week
+                     !!sym(frequency_input) == 647504893 ~ 7),    #everyday
+                    TRUE ~ 0 #default to zero if no follow up response
+                   ),
+                 #Creating duration variables for each activity
+                 !!duration_output := case_when(
+                    !is.na(!!sym(duration_input)) ~ case_when(  #calculate duration based on follow up responses
+                     !!sym(duration_input) == 428999623 ~ 0.125,  #averaged 7.5 minutes/60 = 0.125 hours
+                     !!sym(duration_input) == 248303092 ~ 0.383,  #averaged 23 minutes/60 = 0.383 hours
+                     !!sym(duration_input) == 206020811 ~ 0.625,  #averaged 37.5 minutes/60 = 0.625 hours
+                     !!sym(duration_input) == 264163865 ~ 0.867,  #averaged 52 minutes/60 = 0.867 hours
+                     !!sym(duration_input) == 638092100 ~ 1,      #one hr
+                     !!sym(duration_input) == 628177728 ~ 2,	     #two hrs
+                     !!sym(duration_input) == 805918496 ~ 3),		 #three hrs
+                   TRUE ~ 0 #default to zero if no follow up response
+                 ))
+  return(data)
 }
 
 #Calling function that creates freq and dur variable for each activity
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI,"SrvMRE_WalkHike_v1r0","SrvMRE_WalkHikeOften_v1r0","WalkHike_freq","SrvMRE_WalkHikeTime_v1r0","WalkHike_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_JogRun_v1r0","SrvMRE_JogRunOften_v1r0","JogRun_freq","SrvMRE_JogRunTime_v1r0","JogRun_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_Tennis_v1r0","SrvMRE_TennisOften_v1r0","Tennis_freq","SrvMRE_TennisTime_v1r0","Tennis_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_PlayGolf_v1r0","SrvMRE_GolfOften_v1r0","Golf_freq","SrvMRE_GolfTime_v1r0","Golf_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_SwimLaps_v1r0","SrvMRE_SwimLapsOften_v1r0","SwimLaps_freq","SrvMRE_SwimLapsTime_v1r0","SwimLaps_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_BikeRide_v1r0","SrvMRE_BikeOften_v1r0","Bike_freq","SrvMRE_BikeTime_v1r0","Bike_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_Strengthening_v1r0","SrvMRE_StrengthOften_v1r0","Strength_freq","SrvMRE_StrengthTime_v1r0","Strength_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_Yoga_v1r0","SrvMRE_YogaOften_v1r0","Yoga_freq","SrvMRE_YogaTime_v1r0","Yoga_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_MartialArts_v1r0","SrvMRE_MAOften_v1r0","MA_freq","SrvMRE_MATime_v1r0","MA_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_Dance_v1r0","SrvMRE_DanceOften_v1r0","Dance_freq","SrvMRE_DanceTime_v1r0","Dance_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_DownhillSki_v1r0","SrvMRE_SkiOften_v1r0","Ski_freq","SrvMRE_SkiTime_v1r0","Ski_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_CrossCountry_v1r0","SrvMRE_CCSkiOften_v1r0","CCSki_freq","SrvMRE_CCSkiTime_v1r0","CCSki_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_Surf_v1r0","SrvMRE_SurfOften_v1r0","Surf_freq","SrvMRE_SurfTime_v1r0","Surf_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_HICT_v1r0","SrvMRE_HICTOften_v1r0","HICT_freq","SrvMRE_HICTTime_v1r0","HICT_dur")
-physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_OtherExercise_v1r0","SrvMRE_ExerciseOften_v1r0","Exercise_freq","SrvMRE_ExerciseTime_v1r0","Exercise_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI,"SrvMRE_WalkHikeOften_v1r0","WalkHike_freq","SrvMRE_WalkHikeTime_v1r0","WalkHike_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_JogRunOften_v1r0","JogRun_freq","SrvMRE_JogRunTime_v1r0","JogRun_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_TennisOften_v1r0","Tennis_freq","SrvMRE_TennisTime_v1r0","Tennis_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_GolfOften_v1r0","Golf_freq","SrvMRE_GolfTime_v1r0","Golf_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_SwimLapsOften_v1r0","SwimLaps_freq","SrvMRE_SwimLapsTime_v1r0","SwimLaps_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_BikeOften_v1r0","Bike_freq","SrvMRE_BikeTime_v1r0","Bike_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_StrengthOften_v1r0","Strength_freq","SrvMRE_StrengthTime_v1r0","Strength_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_YogaOften_v1r0","Yoga_freq","SrvMRE_YogaTime_v1r0","Yoga_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_MAOften_v1r0","MA_freq","SrvMRE_MATime_v1r0","MA_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_DanceOften_v1r0","Dance_freq","SrvMRE_DanceTime_v1r0","Dance_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_SkiOften_v1r0","Ski_freq","SrvMRE_SkiTime_v1r0","Ski_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_CCSkiOften_v1r0","CCSki_freq","SrvMRE_CCSkiTime_v1r0","CCSki_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_SurfOften_v1r0","Surf_freq","SrvMRE_SurfTime_v1r0","Surf_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_HICTOften_v1r0","HICT_freq","SrvMRE_HICTTime_v1r0","HICT_dur")
+physical_activity_ROI_BC <- calculate_rec_activity(physical_activity_ROI_BC,"SrvMRE_ExerciseOften_v1r0","Exercise_freq","SrvMRE_ExerciseTime_v1r0","Exercise_dur")
 
 #Creating variable that flags participants with inconsistent skip logic
 physical_activity_ROI_BC <- physical_activity_ROI_BC %>%
@@ -456,127 +454,127 @@ physical_activity_ROI_BC <- physical_activity_ROI_BC %>%
     ))
 
 if (run_extra_code) {
-#checking above flag
-sample_walkhike_check <- physical_activity_ROI_BC %>%
-  select(Connect_ID, inconsistent_flag, SrvMRE_WalkHike_v1r0, SrvMRE_WalkHikeOften_v1r0, SrvMRE_WalkHikeTime_v1r0) %>%
- filter (inconsistent_flag == 1 & (SrvMRE_WalkHike_v1r0 == 0 | is.na(SrvMRE_WalkHike_v1r0)))
-
-#Checking to see if any values were assigned incorrectly for frequency and duration
-qc_activity_freq <- function(data, base_var, input_var, output_var) {
-  data %>%
-    filter((!!sym(base_var) != 1 & !!sym(output_var) != 0) |
-           (!!sym(base_var) == 1 & !is.na(!!sym(input_var)))) %>%
-    summarize(
-      total_mismatches = sum(
-        (!!sym(input_var) == 239152340 & !!sym(output_var) != 0.24) |
-        (!!sym(input_var) == 582006876 & !!sym(output_var) != 0.59) |
-        (!!sym(input_var) == 645894551 & !!sym(output_var) != 1.5) |
-        (!!sym(input_var) == 996315715 & !!sym(output_var) != 3.5) |
-        (!!sym(input_var) == 671267928 & !!sym(output_var) != 5.5) |
-        (!!sym(input_var) == 647504893 & !!sym(output_var) != 7),
-        na.rm = TRUE),
-      total_checked = n())
-}
-
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_WalkHike_v1r0", "SrvMRE_WalkHikeOften_v1r0", "WalkHike_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_JogRun_v1r0", "SrvMRE_JogRunOften_v1r0", "JogRun_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Tennis_v1r0", "SrvMRE_TennisOften_v1r0", "Tennis_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_PlayGolf_v1r0", "SrvMRE_GolfOften_v1r0", "Golf_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SwimLaps_v1r0", "SrvMRE_SwimLapsOften_v1r0", "SwimLaps_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_BikeRide_v1r0", "SrvMRE_BikeOften_v1r0", "Bike_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Strengthening_v1r0", "SrvMRE_StrengthOften_v1r0", "Strength_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Yoga_v1r0", "SrvMRE_YogaOften_v1r0", "Yoga_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_MartialArts_v1r0", "SrvMRE_MAOften_v1r0", "MA_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Dance_v1r0", "SrvMRE_DanceOften_v1r0", "Dance_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_DownhillSki_v1r0", "SrvMRE_SkiOften_v1r0", "Ski_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_CrossCountry_v1r0", "SrvMRE_CCSkiOften_v1r0", "CCSki_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_Surf_v1r0", "SrvMRE_SurfOften_v1r0", "Surf_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_HICT_v1r0", "SrvMRE_HICTOften_v1r0", "HICT_freq")
-qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_OtherExercise_v1r0", "SrvMRE_ExerciseOften_v1r0", "Exercise_freq")
-
-qc_activity_duration <- function(data, base_var, input_var, output_var) {
-  data %>%
-    filter((!!sym(base_var) != 1 & !!sym(output_var) != 0) |
-             (!!sym(base_var) == 1 & !is.na(!!sym(input_var)))) %>%
-    summarize(
-      total_mismatches = sum(
-        (!!sym(input_var) == 428999623 & !!sym(output_var) != 0.125) |
-          (!!sym(input_var) == 248303092 & !!sym(output_var) != 0.383) |
-          (!!sym(input_var) == 206020811 & !!sym(output_var) != 0.625) |
-          (!!sym(input_var) == 264163865 & !!sym(output_var) != 0.867) |
-          (!!sym(input_var) == 638092100 & !!sym(output_var) != 1) |
-          (!!sym(input_var) == 628177728 & !!sym(output_var) != 2) |
-          (!!sym(input_var) == 805918496 & !!sym(output_var) != 3),
-        na.rm = TRUE),
-      total_checked = n())
-}
-
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_WalkHike_v1r0", "SrvMRE_WalkHikeTime_v1r0", "WalkHike_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_JogRun_v1r0", "SrvMRE_JogRunTime_v1r0", "JogRun_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Tennis_v1r0", "SrvMRE_TennisTime_v1r0", "Tennis_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_PlayGolf_v1r0", "SrvMRE_GolfTime_v1r0", "Golf_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SwimLaps_v1r0", "SrvMRE_SwimLapsTime_v1r0", "SwimLaps_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_BikeRide_v1r0", "SrvMRE_BikeTime_v1r0", "Bike_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Strengthening_v1r0", "SrvMRE_StrengthTime_v1r0", "Strength_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Yoga_v1r0", "SrvMRE_YogaTime_v1r0", "Yoga_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_MartialArts_v1r0", "SrvMRE_MATime_v1r0", "MA_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Dance_v1r0", "SrvMRE_DanceTime_v1r0", "Dance_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_DownhillSki_v1r0", "SrvMRE_SkiTime_v1r0", "Ski_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_CrossCountry_v1r0", "SrvMRE_CCSkiTime_v1r0", "CCSki_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_Surf_v1r0", "SrvMRE_SurfTime_v1r0", "Surf_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_HICT_v1r0", "SrvMRE_HICTTime_v1r0", "HICT_dur")
-qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_OtherExercise_v1r0", "SrvMRE_ExerciseTime_v1r0", "Exercise_dur")
+  #checking above flag
+  sample_walkhike_check <- physical_activity_ROI_BC %>%
+    select(Connect_ID, inconsistent_flag, SrvMRE_WalkHike_v1r0, SrvMRE_WalkHikeOften_v1r0, SrvMRE_WalkHikeTime_v1r0) %>%
+    filter (inconsistent_flag == 1 & (SrvMRE_WalkHike_v1r0 == 0 | is.na(SrvMRE_WalkHike_v1r0)))
+  
+  #Checking to see if any values were assigned incorrectly for frequency and duration
+  qc_activity_freq <- function(data, input_var, output_var) {
+    data %>%
+      filter(!is.na(!!sym(input_var))) %>%
+      summarize(
+        total_mismatches = sum(
+          (!!sym(input_var) == 239152340 & !!sym(output_var) != 0.24) |
+            (!!sym(input_var) == 582006876 & !!sym(output_var) != 0.59) |
+            (!!sym(input_var) == 645894551 & !!sym(output_var) != 1.5) |
+            (!!sym(input_var) == 996315715 & !!sym(output_var) != 3.5) |
+            (!!sym(input_var) == 671267928 & !!sym(output_var) != 5.5) |
+            (!!sym(input_var) == 647504893 & !!sym(output_var) != 7),
+          na.rm = TRUE),
+        total_checked = n())
+  }
+  
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_WalkHikeOften_v1r0", "WalkHike_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_JogRunOften_v1r0", "JogRun_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_TennisOften_v1r0", "Tennis_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_GolfOften_v1r0", "Golf_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SwimLapsOften_v1r0", "SwimLaps_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_BikeOften_v1r0", "Bike_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_StrengthOften_v1r0", "Strength_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_YogaOften_v1r0", "Yoga_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_MAOften_v1r0", "MA_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_DanceOften_v1r0", "Dance_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SkiOften_v1r0", "Ski_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_CCSkiOften_v1r0", "CCSki_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_SurfOften_v1r0", "Surf_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_HICTOften_v1r0", "HICT_freq")
+  qc_activity_freq(physical_activity_ROI_BC, "SrvMRE_ExerciseOften_v1r0", "Exercise_freq")
+  
+  qc_activity_duration <- function(data, input_var, output_var) {
+    data %>%
+      filter(!is.na(!!sym(input_var))) %>%
+      summarize(
+        total_mismatches = sum(
+          (!!sym(input_var) == 428999623 & !!sym(output_var) != 0.125) |
+            (!!sym(input_var) == 248303092 & !!sym(output_var) != 0.383) |
+            (!!sym(input_var) == 206020811 & !!sym(output_var) != 0.625) |
+            (!!sym(input_var) == 264163865 & !!sym(output_var) != 0.867) |
+            (!!sym(input_var) == 638092100 & !!sym(output_var) != 1) |
+            (!!sym(input_var) == 628177728 & !!sym(output_var) != 2) |
+            (!!sym(input_var) == 805918496 & !!sym(output_var) != 3),
+          na.rm = TRUE),
+        total_checked = n())
+  }
+  
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_WalkHikeTime_v1r0", "WalkHike_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_JogRunTime_v1r0", "JogRun_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_TennisTime_v1r0", "Tennis_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_GolfTime_v1r0", "Golf_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SwimLapsTime_v1r0", "SwimLaps_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_BikeTime_v1r0", "Bike_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_StrengthTime_v1r0", "Strength_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_YogaTime_v1r0", "Yoga_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_MATime_v1r0", "MA_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_DanceTime_v1r0", "Dance_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SkiTime_v1r0", "Ski_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_CCSkiTime_v1r0", "CCSki_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_SurfTime_v1r0", "Surf_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_HICTTime_v1r0", "HICT_dur")
+  qc_activity_duration(physical_activity_ROI_BC, "SrvMRE_ExerciseTime_v1r0", "Exercise_dur")
+  
 }
 
 ##Function to create seasonality variables, ensuring all season variables are numeric
-calculate_season <- function(data, activity_var, spring_input, summer_input, fall_input, winter_input, season_output) {
+calculate_season <- function(data, spring_input, summer_input, fall_input, winter_input, season_output) {
   data <- mutate(data,
-   !!season_output := case_when(
-    !!sym(activity_var) == 1 & rowSums(cbind(
-      as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)), as.numeric(!!sym(winter_input))),
-        na.rm = TRUE) == 1 ~ 0.25, # One season selected
-   !!sym(activity_var) == 1 & rowSums(cbind(
-    as.numeric(!!sym(spring_input)),as.numeric(!!sym(summer_input)),as.numeric(!!sym(fall_input)),as.numeric(!!sym(winter_input))),
-      na.rm = TRUE) == 2 ~ 0.50, # Two seasons selected
-   !!sym(activity_var) == 1 & rowSums(cbind(
-    as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)),as.numeric(!!sym(winter_input))),
-      na.rm = TRUE) == 3 ~ 0.75, # Three seasons selected
-   !!sym(activity_var) == 1 & rowSums(cbind(
-    as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)), as.numeric(!!sym(winter_input))),
-      na.rm = TRUE) == 4 ~ 1.00, # Four seasons selected
-   !!sym(activity_var) == 1 & rowSums(cbind(
-    as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)), as.numeric(!!sym(winter_input))),
-      na.rm = TRUE) == 0 ~ 0, # If none selected, set to 0
-   !!sym(activity_var) != 1 ~ 0 )) # If activity not selected, set to 0 -- this also includes those who selected none of the above or skipped the section
+                 !!season_output := case_when(
+                   rowSums(cbind(
+                     as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)), as.numeric(!!sym(winter_input))),
+                     na.rm = TRUE) == 1 ~ 0.25, # One season selected
+                   rowSums(cbind(
+                     as.numeric(!!sym(spring_input)),as.numeric(!!sym(summer_input)),as.numeric(!!sym(fall_input)),as.numeric(!!sym(winter_input))),
+                     na.rm = TRUE) == 2 ~ 0.50, # Two seasons selected
+                   rowSums(cbind(
+                     as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)),as.numeric(!!sym(winter_input))),
+                     na.rm = TRUE) == 3 ~ 0.75, # Three seasons selected
+                   rowSums(cbind(
+                     as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)), as.numeric(!!sym(winter_input))),
+                     na.rm = TRUE) == 4 ~ 1.00, # Four seasons selected
+                   rowSums(cbind(
+                     as.numeric(!!sym(spring_input)), as.numeric(!!sym(summer_input)), as.numeric(!!sym(fall_input)), as.numeric(!!sym(winter_input))),
+                     na.rm = TRUE) == 0 ~ 0, # If none selected, set to 0
+                   )) 
   return(data)
-  }
+}
 
 #Calling function that creates seasonality variables
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_WalkHike_v1r0", "SrvMRE_WalkHikeSpring_v1r0", "SrvMRE_WalkHikeSummer_v1r0", "SrvMRE_WalkHikeFall_v1r0", "SrvMRE_WalkHikeWinter_v1r0","WalkHike_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_JogRun_v1r0", "SrvMRE_JogRunSpring_v1r0", "SrvMRE_JogRunSummer_v1r0", "SrvMRE_JogRunFall_v1r0", "SrvMRE_JogRunWinter_v1r0", "JogRun_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_Tennis_v1r0", "SrvMRE_TennisSpring_v1r0", "SrvMRE_TennisSummer_v1r0", "SrvMRE_TennisFall_v1r0", "SrvMRE_TennisWinter_v1r0", "Tennis_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_PlayGolf_v1r0", "SrvMRE_GolfSpring_v1r0", "SrvMRE_GolfSummer_v1r0", "SrvMRE_GolfFall_v1r0", "SrvMRE_GolfWinter_v1r0", "Golf_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_SwimLaps_v1r0", "SrvMRE_SwimLapsSpring_v1r0", "SrvMRE_SwimLapsSummer_v1r0", "SrvMRE_SwimLapsFall_v1r0", "SrvMRE_SwimLapsWinter_v1r0", "SwimLaps_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_BikeRide_v1r0", "SrvMRE_BikeSpring_v1r0", "SrvMRE_BikeSummer_v1r0", "SrvMRE_BikeFall_v1r0", "SrvMRE_BikeWinter_v1r0", "Bike_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_Strengthening_v1r0", "SrvMRE_StrengthSpring_v1r0", "SrvMRE_StrengthSummer_v1r0", "SrvMRE_StrengthFall_v1r0", "SrvMRE_StrengthWinter_v1r0", "Strength_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_Yoga_v1r0", "SrvMRE_YogaSpring_v1r0", "SrvMRE_YogaSummer_v1r0", "SrvMRE_YogaFall_v1r0", "SrvMRE_YogaWinter_v1r0", "Yoga_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_MartialArts_v1r0", "SrvMRE_MASpring_v1r0", "SrvMRE_MASummer_v1r0", "SrvMRE_MAFall_v1r0", "SrvMRE_MAWinter_v1r0", "MA_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_Dance_v1r0", "SrvMRE_DanceSpring_v1r0", "SrvMRE_DanceSummer_v1r0", "SrvMRE_DanceFall_v1r0", "SrvMRE_DanceWinter_v1r0", "Dance_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_DownhillSki_v1r0", "SrvMRE_SkiSpring_v1r0", "SrvMRE_SkiSummer_v1r0", "SrvMRE_SkiFall_v1r0", "SrvMRE_SkiWinter_v1r0", "Ski_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_CrossCountry_v1r0", "SrvMRE_CCSkiSpring_v1r0", "SrvMRE_CCSkiSummer_v1r0", "SrvMRE_CCSkiFall_v1r0", "SrvMRE_CCSkiWinter_v1r0", "CCSki_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_Surf_v1r0", "SrvMRE_SurfSpring_v1r0", "SrvMRE_SurfSummer_v1r0", "SrvMRE_SurfFall_v1r0", "SrvMRE_SurfWinter_v1r0", "Surf_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_HICT_v1r0", "SrvMRE_HICTSpring_v1r0", "SrvMRE_HICTSummer_v1r0", "SrvMRE_HICTFall_v1r0", "SrvMRE_HICTWinter_v1r0", "HICT_season")
-physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC,"SrvMRE_OtherExercise_v1r0", "SrvMRE_OtherExerciseSpring_v1r0", "SrvMRE_OtherExerciseSummer_v1r0", "SrvMRE_OtherExerciseFall_v1r0", "SrvMRE_OtherExerciseWinter_v1r0", "Exercise_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_WalkHikeSpring_v1r0", "SrvMRE_WalkHikeSummer_v1r0", "SrvMRE_WalkHikeFall_v1r0", "SrvMRE_WalkHikeWinter_v1r0","WalkHike_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_JogRunSpring_v1r0", "SrvMRE_JogRunSummer_v1r0", "SrvMRE_JogRunFall_v1r0", "SrvMRE_JogRunWinter_v1r0", "JogRun_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_TennisSpring_v1r0", "SrvMRE_TennisSummer_v1r0", "SrvMRE_TennisFall_v1r0", "SrvMRE_TennisWinter_v1r0", "Tennis_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_GolfSpring_v1r0", "SrvMRE_GolfSummer_v1r0", "SrvMRE_GolfFall_v1r0", "SrvMRE_GolfWinter_v1r0", "Golf_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_SwimLapsSpring_v1r0", "SrvMRE_SwimLapsSummer_v1r0", "SrvMRE_SwimLapsFall_v1r0", "SrvMRE_SwimLapsWinter_v1r0", "SwimLaps_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_BikeSpring_v1r0", "SrvMRE_BikeSummer_v1r0", "SrvMRE_BikeFall_v1r0", "SrvMRE_BikeWinter_v1r0", "Bike_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_StrengthSpring_v1r0", "SrvMRE_StrengthSummer_v1r0", "SrvMRE_StrengthFall_v1r0", "SrvMRE_StrengthWinter_v1r0", "Strength_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_YogaSpring_v1r0", "SrvMRE_YogaSummer_v1r0", "SrvMRE_YogaFall_v1r0", "SrvMRE_YogaWinter_v1r0", "Yoga_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_MASpring_v1r0", "SrvMRE_MASummer_v1r0", "SrvMRE_MAFall_v1r0", "SrvMRE_MAWinter_v1r0", "MA_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_DanceSpring_v1r0", "SrvMRE_DanceSummer_v1r0", "SrvMRE_DanceFall_v1r0", "SrvMRE_DanceWinter_v1r0", "Dance_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_SkiSpring_v1r0", "SrvMRE_SkiSummer_v1r0", "SrvMRE_SkiFall_v1r0", "SrvMRE_SkiWinter_v1r0", "Ski_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_CCSkiSpring_v1r0", "SrvMRE_CCSkiSummer_v1r0", "SrvMRE_CCSkiFall_v1r0", "SrvMRE_CCSkiWinter_v1r0", "CCSki_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_SurfSpring_v1r0", "SrvMRE_SurfSummer_v1r0", "SrvMRE_SurfFall_v1r0", "SrvMRE_SurfWinter_v1r0", "Surf_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_HICTSpring_v1r0", "SrvMRE_HICTSummer_v1r0", "SrvMRE_HICTFall_v1r0", "SrvMRE_HICTWinter_v1r0", "HICT_season")
+physical_activity_ROI_BC <- calculate_season(physical_activity_ROI_BC, "SrvMRE_OtherExerciseSpring_v1r0", "SrvMRE_OtherExerciseSummer_v1r0", "SrvMRE_OtherExerciseFall_v1r0", "SrvMRE_OtherExerciseWinter_v1r0", "Exercise_season")
 
 if (run_extra_code) {
-#sampling rows to check above calculations
-sample_JogRun_season <- physical_activity_ROI_BC %>%
-  select(Connect_ID, SrvMRE_JogRunSpring_v1r0, SrvMRE_JogRunSummer_v1r0, SrvMRE_JogRunFall_v1r0, SrvMRE_JogRunWinter_v1r0, JogRun_season) %>%
-  sample_n(100)
-sample_Bike_season <- physical_activity_ROI_BC %>%
-  select(Connect_ID, SrvMRE_BikeSpring_v1r0, SrvMRE_BikeSummer_v1r0, SrvMRE_BikeFall_v1r0, SrvMRE_BikeWinter_v1r0, Bike_season) %>%
-  sample_n(100)
+  #sampling rows to check above calculations
+  sample_JogRun_season <- physical_activity_ROI_BC %>%
+    select(Connect_ID, SrvMRE_JogRunSpring_v1r0, SrvMRE_JogRunSummer_v1r0, SrvMRE_JogRunFall_v1r0, SrvMRE_JogRunWinter_v1r0, JogRun_season) %>%
+    sample_n(100)
+  sample_Bike_season <- physical_activity_ROI_BC %>%
+    select(Connect_ID, SrvMRE_BikeSpring_v1r0, SrvMRE_BikeSummer_v1r0, SrvMRE_BikeFall_v1r0, SrvMRE_BikeWinter_v1r0, Bike_season) %>%
+    sample_n(100)
 }
+
 
 #Calculating hours per week for each activity per Hayden's example --> jog_hrweek = jog_freq*jog_duration*jog_season
 physical_activity_ROI_BC$WalkHike_hrweek = physical_activity_ROI_BC$WalkHike_freq * physical_activity_ROI_BC$WalkHike_dur * physical_activity_ROI_BC$WalkHike_season
