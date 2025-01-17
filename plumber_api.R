@@ -26,10 +26,10 @@ function() {
 
 
 #* Generate physical activity scores and write to BigQuery table.
-#* @param project_id GCP project
 #* @get /update_roi_physical_activity_data
 #* @post /update_roi_physical_activity_data
-function(project_id=Sys.getenv("PROJECT_ID")) {
+#* @param project_id
+function(project_id = Sys.getenv("PROJECT_ID")) {
 
   # Define dataset and table information
   dataset_id <- "ROI"
@@ -37,7 +37,7 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
 
   # Get data
   source('get_roi_physical_activity_scores.R')
-  data_to_append <- get_roi_physical_activity_scores(project_id,
+  data_to_append <- get_roi_physical_activity_scores(project=project_id,
                                                      include_only_updates=TRUE)
 
   # Check how many rows are in the data to append
@@ -58,7 +58,7 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
   )
 
   # Print the number of rows appended
-  message <- glue::glue("Appended {num_rows} rows to {dataset_id}.{table_id}.\n")
+  message <- glue::glue("Appended {num_rows} rows to {project_id}{dataset_id}.{table_id}.\n")
   print(message)
 
   # Check that Project ID environment variable is set correctly for current environment
