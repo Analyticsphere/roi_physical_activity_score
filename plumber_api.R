@@ -36,7 +36,7 @@ function() {
 
   # Get data
   source('get_roi_physical_activity_scores.R')
-  data_to_append <- get_roi_physical_activity_scores(project=Sys.getenv("PROJECT_ID"),
+  data_to_append <- get_roi_physical_activity_scores(project_id=Sys.getenv("PROJECT_ID"),
                                                      include_only_updates=TRUE)
 
   # Check how many rows are in the data to append
