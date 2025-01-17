@@ -26,10 +26,9 @@ function() {
 
 
 #* Generate physical activity scores and write to BigQuery table.
-#* @param project_id GCP project
 #* @get /update_roi_physical_activity_data
 #* @post /update_roi_physical_activity_data
-function(project_id=Sys.getenv("PROJECT_ID")) {
+function() {
 
   # Define dataset and table information
   dataset_id <- "ROI"
@@ -37,7 +36,7 @@ function(project_id=Sys.getenv("PROJECT_ID")) {
 
   # Get data
   source('get_roi_physical_activity_scores.R')
-  data_to_append <- get_roi_physical_activity_scores(project_id,
+  data_to_append <- get_roi_physical_activity_scores(project=Sys.getenv("PROJECT_ID"),
                                                      include_only_updates=TRUE)
 
   # Check how many rows are in the data to append
