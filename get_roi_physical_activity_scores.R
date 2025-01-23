@@ -350,7 +350,8 @@ get_roi_physical_activity_scores <- function(project=Sys.getenv("PROJECT_ID"),
     is.na(SrvMRE_HICTSummer_v1r0) & is.na(SrvMRE_HICTFall_v1r0) & is.na(SrvMRE_HICTWinter_v1r0) & is.na(SrvMRE_ExerciseOften_v1r0) & 
     is.na(SrvMRE_ExerciseTime_v1r0) & is.na(SrvMRE_OtherExerciseSpring_v1r0) & is.na(SrvMRE_OtherExerciseSummer_v1r0) & 
     is.na(SrvMRE_OtherExerciseFall_v1r0) & is.na(SrvMRE_OtherExerciseWinter_v1r0)   & is.na(SrvMRE_None_v1r0) ~ 1,  
-    TRUE ~ 0 #not skipped))
+    TRUE ~ 0 #not skipped
+  ))
 
   # ----------------------------------------------------------------------------
   #Function to create frequency and duration variables for each activity
