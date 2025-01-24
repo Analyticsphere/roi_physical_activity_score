@@ -1,5 +1,6 @@
 # Workflow: Delivering Physical Activity Scores to BigQuery
 
+
 This workflow automatically updates a BigQuery table with physical activity scores on a scheduled basis. It leverages Google Cloud services, R, and Docker to build a fully automated pipeline.
 
 
@@ -30,5 +31,4 @@ graph LR
     end
     G[GitHub Push] -->|Triggers Build| H
 ```
-
 
