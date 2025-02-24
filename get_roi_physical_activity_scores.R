@@ -325,25 +325,33 @@ get_roi_physical_activity_scores <- function(project=Sys.getenv("PROJECT_ID"),
   physical_activity_ROI <- DBI::dbGetQuery(con, final_query)
 
   #true missing flag for those who skipped this section
-  physical_activity_ROI <- physical_activity_ROI %>% mutate(
-    true_missing = case_when(
-      is.na(SrvMRE_WalkHike_v1r0)
-      & is.na(SrvMRE_JogRun_v1r0)
-      & is.na(SrvMRE_Tennis_v1r0)
-      & is.na(SrvMRE_PlayGolf_v1r0)
-      & is.na(SrvMRE_SwimLaps_v1r0)
-      & is.na(SrvMRE_BikeRide_v1r0)
-      & is.na(SrvMRE_Strengthening_v1r0)
-      & is.na(SrvMRE_Yoga_v1r0)
-      & is.na(SrvMRE_MartialArts_v1r0)
-      & is.na(SrvMRE_Dance_v1r0)
-      & is.na(SrvMRE_DownhillSki_v1r0)
-      & is.na(SrvMRE_CrossCountry_v1r0)
-      & is.na(SrvMRE_Surf_v1r0)
-      & is.na(SrvMRE_HICT_v1r0)
-      & is.na(SrvMRE_OtherExercise_v1r0) ~ 1, #flag for those who skipped the questions
-      TRUE ~ 0 #not skipped
-    ))
+  physical_activity_ROI <- physical_activity_ROI %>% mutate(  true_missing = case_when(
+  is.na(SrvMRE_WalkHikeOften_v1r0) & is.na(SrvMRE_WalkHikeTime_v1r0) & is.na(SrvMRE_WalkHikeSpring_v1r0) & 
+    is.na(SrvMRE_WalkHikeSummer_v1r0) & is.na(SrvMRE_WalkHikeFall_v1r0) & is.na(SrvMRE_WalkHikeWinter_v1r0) &    
+    is.na(SrvMRE_JogRunOften_v1r0) & is.na(SrvMRE_JogRunTime_v1r0) & is.na(SrvMRE_JogRunSpring_v1r0) & is.na(SrvMRE_JogRunSummer_v1r0) & 
+    is.na(SrvMRE_JogRunFall_v1r0) & is.na(SrvMRE_JogRunWinter_v1r0) &    is.na(SrvMRE_TennisOften_v1r0) & is.na(SrvMRE_TennisTime_v1r0) & 
+    is.na(SrvMRE_TennisSpring_v1r0) & is.na(SrvMRE_TennisSummer_v1r0) & is.na(SrvMRE_TennisFall_v1r0) & is.na(SrvMRE_TennisWinter_v1r0) &    
+    is.na(SrvMRE_GolfOften_v1r0) & is.na(SrvMRE_GolfTime_v1r0) & is.na(SrvMRE_GolfSpring_v1r0) & is.na(SrvMRE_GolfSummer_v1r0) & 
+    is.na(SrvMRE_GolfFall_v1r0) & is.na(SrvMRE_GolfWinter_v1r0) &    is.na(SrvMRE_SwimLapsOften_v1r0) & is.na(SrvMRE_SwimLapsTime_v1r0) & 
+    is.na(SrvMRE_SwimLapsSpring_v1r0) & is.na(SrvMRE_SwimLapsSummer_v1r0) & is.na(SrvMRE_SwimLapsFall_v1r0) & is.na(SrvMRE_SwimLapsWinter_v1r0) &
+    is.na(SrvMRE_BikeOften_v1r0) & is.na(SrvMRE_BikeTime_v1r0) & is.na(SrvMRE_BikeSpring_v1r0) & is.na(SrvMRE_BikeSummer_v1r0) & 
+    is.na(SrvMRE_BikeFall_v1r0) & is.na(SrvMRE_BikeWinter_v1r0) & is.na(SrvMRE_StrengthOften_v1r0) & is.na(SrvMRE_StrengthTime_v1r0) & 
+    is.na(SrvMRE_StrengthSpring_v1r0) & is.na(SrvMRE_StrengthSummer_v1r0) & is.na(SrvMRE_StrengthFall_v1r0) & 
+    is.na(SrvMRE_StrengthWinter_v1r0) &    is.na(SrvMRE_YogaOften_v1r0) & is.na(SrvMRE_YogaTime_v1r0) & is.na(SrvMRE_YogaSpring_v1r0) & 
+    is.na(SrvMRE_YogaSummer_v1r0) & is.na(SrvMRE_YogaFall_v1r0) & is.na(SrvMRE_YogaWinter_v1r0) & is.na(SrvMRE_MAOften_v1r0) & 
+    is.na(SrvMRE_MATime_v1r0) & is.na(SrvMRE_MASpring_v1r0) & is.na(SrvMRE_MASummer_v1r0) & is.na(SrvMRE_MAFall_v1r0) & 
+    is.na(SrvMRE_MAWinter_v1r0) &    is.na(SrvMRE_DanceOften_v1r0) & is.na(SrvMRE_DanceTime_v1r0) & is.na(SrvMRE_DanceSpring_v1r0) & 
+    is.na(SrvMRE_DanceSummer_v1r0) & is.na(SrvMRE_DanceFall_v1r0) & is.na(SrvMRE_DanceWinter_v1r0) & is.na(SrvMRE_SkiOften_v1r0) & 
+    is.na(SrvMRE_SkiTime_v1r0) & is.na(SrvMRE_SkiSpring_v1r0) & is.na(SrvMRE_SkiSummer_v1r0) & is.na(SrvMRE_SkiFall_v1r0) & 
+    is.na(SrvMRE_SkiWinter_v1r0) &    is.na(SrvMRE_CCSkiOften_v1r0) & is.na(SrvMRE_CCSkiTime_v1r0) & is.na(SrvMRE_CCSkiSpring_v1r0) & 
+    is.na(SrvMRE_CCSkiSummer_v1r0) & is.na(SrvMRE_CCSkiFall_v1r0) & is.na(SrvMRE_CCSkiWinter_v1r0) &    is.na(SrvMRE_SurfOften_v1r0) & 
+    is.na(SrvMRE_SurfTime_v1r0) & is.na(SrvMRE_SurfSpring_v1r0) & is.na(SrvMRE_SurfSummer_v1r0) & is.na(SrvMRE_SurfFall_v1r0) & 
+    is.na(SrvMRE_SurfWinter_v1r0) & is.na(SrvMRE_HICTOften_v1r0) & is.na(SrvMRE_HICTTime_v1r0) & is.na(SrvMRE_HICTSpring_v1r0) & 
+    is.na(SrvMRE_HICTSummer_v1r0) & is.na(SrvMRE_HICTFall_v1r0) & is.na(SrvMRE_HICTWinter_v1r0) & is.na(SrvMRE_ExerciseOften_v1r0) & 
+    is.na(SrvMRE_ExerciseTime_v1r0) & is.na(SrvMRE_OtherExerciseSpring_v1r0) & is.na(SrvMRE_OtherExerciseSummer_v1r0) & 
+    is.na(SrvMRE_OtherExerciseFall_v1r0) & is.na(SrvMRE_OtherExerciseWinter_v1r0)   & is.na(SrvMRE_None_v1r0) ~ 1,  
+    TRUE ~ 0 #not skipped
+  ))
 
   # ----------------------------------------------------------------------------
   #Function to create frequency and duration variables for each activity
