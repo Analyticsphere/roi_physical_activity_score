@@ -528,7 +528,7 @@ get_roi_physical_activity_scores <- function(project=Sys.getenv("PROJECT_ID"),
   #Calculating hours per week and METhr variables for each intensity category, ignoring potential missing inputs to calculate final variable
   #None of the recreational activities fall into the light intensity category
   physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
-    moderate_hrweek = rowSums(cbind(WalkHike_hrweek, Golf_hrweek, SwimLaps_METhr, Strength_hrweek, Yoga_hrweek, MA_hrweek, Dance_hrweek, Surf_hrweek,  Exercise_hrweek), na.rm = TRUE),
+    moderate_hrweek = rowSums(cbind(WalkHike_hrweek, Golf_hrweek, SwimLaps_hrweek, Strength_hrweek, Yoga_hrweek, MA_hrweek, Dance_hrweek, Surf_hrweek,  Exercise_hrweek), na.rm = TRUE),
     moderate_METhr = rowSums(cbind(WalkHike_METhr, Golf_METhr, SwimLaps_METhr, Strength_METhr, Yoga_METhr, MA_METhr, Dance_METhr, Surf_METhr,  Exercise_METhr), na.rm = TRUE),
     vigorous_hrweek = rowSums(cbind(JogRun_hrweek, Tennis_hrweek, Bike_hrweek, Ski_hrweek, CCSki_hrweek, HICT_hrweek), na.rm = TRUE),
     vigorous_METhr = rowSums(cbind(JogRun_METhr, Tennis_METhr, Bike_METhr, Ski_METhr, CCSki_METhr, HICT_METhr), na.rm = TRUE))
@@ -536,7 +536,7 @@ get_roi_physical_activity_scores <- function(project=Sys.getenv("PROJECT_ID"),
   #Creating additional hours per week and MET hours per week variables without strengthening activity included
   #Vigorous activity variables remain the same because they don't include strengthening activities
   physical_activity_ROI_BC <- physical_activity_ROI_BC %>% mutate(
-    moderate_aerobic_hrweek = rowSums(cbind(WalkHike_hrweek, Golf_hrweek, SwimLaps_METhr, Yoga_hrweek, MA_hrweek, Dance_hrweek, Surf_hrweek,  Exercise_hrweek), na.rm = TRUE),
+    moderate_aerobic_hrweek = rowSums(cbind(WalkHike_hrweek, Golf_hrweek, SwimLaps_hrweek, Yoga_hrweek, MA_hrweek, Dance_hrweek, Surf_hrweek,  Exercise_hrweek), na.rm = TRUE),
     moderate_aerobic_METhr = rowSums(cbind(WalkHike_METhr, Golf_METhr, SwimLaps_METhr, Yoga_METhr, MA_METhr, Dance_METhr, Surf_METhr,  Exercise_METhr), na.rm = TRUE))
 
   #Creating minutes per week variable for moderate and vigorous intensity
